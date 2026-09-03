@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import Home from "@/pages/Home";
 import Students from "@/pages/Students";
 import PartnerDashboard from "@/pages/PartnerDashboard";
+import Notifications from "@/pages/Notifications";
 
 // ---------------------------------------------------------------------------
 // Root route
@@ -71,12 +72,19 @@ const partnerDashboardRoute = createRoute({
   component: PartnerDashboard,
 });
 
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/partner-dashboard/notifications",
+  component: Notifications,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   homeRoute,
   studentsRoute,
   partnerDashboardRoute,
+  notificationsRoute,
 ]);
 
 export const router = createRouter({
