@@ -18,9 +18,7 @@ import {
   LogOut,
   TrendingUp,
   Users,
-  FileX,
   CircleDollarSign,
-  AlertTriangle,
   Receipt,
   ChevronDown,
   ChevronUp,
@@ -569,13 +567,6 @@ export default function PartnerDashboard() {
           className="rounded-[20px] p-6"
           style={{ backgroundColor: "#e8f0fc" }}
         >
-          {/* Today badge */}
-          <div
-            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-4"
-            style={{ backgroundColor: "#1b61c9", color: "white" }}
-          >
-            اليوم
-          </div>
           <div className="flex items-center gap-6">
             {/* SVG Donut Ring with gradient */}
             <div className="relative w-[92px] h-[92px] flex-shrink-0">
@@ -625,12 +616,12 @@ export default function PartnerDashboard() {
             {/* Stats */}
             <div className="flex-1 space-y-3">
               <div>
-                <p className="text-xs text-[#6B7280] mb-1">إجمالي المحصّل اليوم</p>
+                <p className="text-xs text-[#6B7280] mb-1">إجمالي المستحق</p>
                 <p
                   className="text-2xl font-bold"
                   style={{ color: "#0C447C" }}
                 >
-                  {formatCurrency(totals.total_paid)}
+                  {formatCurrency(totals.total_due)}
                 </p>
               </div>
             </div>
@@ -638,150 +629,100 @@ export default function PartnerDashboard() {
         </div>
 
         {/* ============================================================
-            Financial totals — total due / remaining / student count
-            (tinted cards, one 3-column row)
+            Financial totals — student count / total due / remaining.
+            Student count is styled like إجمالي الأقساط: full-width row
+            with larger text, positioned above total due.
         ============================================================ */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Total Due — accent tint */}
+        {/* Student count — full-width row */}
+        <div
+          className="rounded-[14px] border p-3 flex items-center justify-between gap-2"
+          style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
+        >
+          <span className="text-[12px] font-semibold text-[#4B5563]">
+            عدد الطلاب
+          </span>
+          <span className="text-[14px] font-bold text-[#181d26] whitespace-nowrap">
+            {formatNumber(students.with_fee_account)}
+          </span>
+        </div>
+
+        {/* Total Due and Remaining — 2-column grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Total collected — accent tint */}
           <div
-            className="rounded-[18px] border p-3 flex flex-col gap-2"
+            className="rounded-[14px] border p-3 flex flex-col gap-1"
             style={{ backgroundColor: "#e8f0fc", borderColor: "#c5d8f0" }}
           >
-            <div
-              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
-              style={{ borderColor: "#c5d8f0" }}
-            >
-              <CircleDollarSign
-                className="w-4 h-4"
-                strokeWidth={2.2}
-                style={{ color: "#1b61c9" }}
-              />
-            </div>
             <span className="text-[11px] font-medium text-[#4B5563]">
-              إجمالي المستحق
+              إجمالي المحصّل
             </span>
             <p
-              className="text-[15px] font-bold leading-tight break-words"
+              className="text-[14px] font-bold leading-tight break-words"
               style={{ color: "#1b61c9" }}
             >
-              {formatCurrency(totals.total_due)}
+              {formatCurrency(totals.total_paid)}
             </p>
           </div>
 
           {/* Remaining — amber tint */}
           <div
-            className="rounded-[18px] border p-3 flex flex-col gap-2"
+            className="rounded-[14px] border p-3 flex flex-col gap-1"
             style={{ backgroundColor: "#FAEEDA", borderColor: "#EAD8B0" }}
           >
-            <div
-              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
-              style={{ borderColor: "#EAD8B0" }}
-            >
-              <AlertCircle
-                className="w-4 h-4"
-                strokeWidth={2.2}
-                style={{ color: "#BA7517" }}
-              />
-            </div>
             <span className="text-[11px] font-medium text-[#4B5563]">
               المتبقي
             </span>
             <p
-              className="text-[15px] font-bold leading-tight break-words"
+              className="text-[14px] font-bold leading-tight break-words"
               style={{ color: totals.total_remaining > 0 ? "#BA7517" : "#181d26" }}
             >
               {formatCurrency(totals.total_remaining)}
             </p>
           </div>
-
-          {/* Student count — neutral tint */}
-          <div
-            className="rounded-[18px] border p-3 flex flex-col gap-2"
-            style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
-          >
-            <div
-              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              <Users
-                className="w-4 h-4"
-                strokeWidth={2.2}
-                style={{ color: "#6B7280" }}
-              />
-            </div>
-            <span className="text-[11px] font-medium text-[#4B5563]">
-              عدد الطلاب
-            </span>
-            <p
-              className="text-[15px] font-bold leading-tight break-words"
-              style={{ color: "#181d26" }}
-            >
-              {formatNumber(students.with_fee_account)}
-            </p>
-          </div>
         </div>
 
         {/* ============================================================
-            3. 2-column metric cards
+            3. 2-column metric cells — rose tint. Same inner-cell spec as
+               above / the الأقساط الدراسية status cells.
         ============================================================ */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Overdue Students */}
-          <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg"
-                  style={{ backgroundColor: "#FAEEDA" }}
-                >
-                  <AlertTriangle
-                    className="w-4 h-4"
-                    strokeWidth={2.2}
-                    style={{ color: "#BA7517" }}
-                  />
-                </div>
-                <span className="text-[13px] font-medium text-[#6B7280]">
-                  عدد الطلاب المتأخرين
-                </span>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Overdue Students — rose tint */}
+          <div
+            className="rounded-[14px] border p-3 flex flex-col gap-1"
+            style={{ backgroundColor: "#FCEBEB", borderColor: "#F0CFCF" }}
+          >
+            <span className="text-[11px] font-medium text-[#4B5563]">
+              عدد الطلاب المتأخرين
+            </span>
             <p
-              className="text-[22px] font-bold leading-tight"
-              style={{ color: students.overdue_count > 0 ? "#BA7517" : "#181d26" }}
+              className="text-[14px] font-bold leading-tight break-words"
+              style={{ color: students.overdue_count > 0 ? "#A32D2D" : "#181d26" }}
             >
               {formatNumber(students.overdue_count)}
             </p>
           </div>
 
-          {/* Returned Checks */}
-          <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg"
-                  style={{ backgroundColor: "#FCEBEB" }}
-                >
-                  <FileX
-                    className="w-4 h-4"
-                    strokeWidth={2.2}
-                    style={{ color: "#A32D2D" }}
-                  />
-                </div>
-                <span className="text-[13px] font-medium text-[#6B7280]">
-                  شيكات مرجوعة
-                </span>
-              </div>
-            </div>
-            <p
-              className="text-[22px] font-bold leading-tight"
-              style={{ color: checks.returned > 0 ? "#A32D2D" : "#181d26" }}
-            >
-              {formatNumber(checks.returned)}
-            </p>
-            {checks.returned > 0 && (
-              <p className="text-[13px] text-[#6B7280] mt-0.5">
-                {formatCurrency(checks.returned_amount)}
+          {/* Returned Checks — rose tint */}
+          <div
+            className="rounded-[14px] border p-3 flex flex-col gap-1"
+            style={{ backgroundColor: "#FCEBEB", borderColor: "#F0CFCF" }}
+          >
+            <span className="text-[11px] font-medium text-[#4B5563]">
+              شيكات مرجوعة
+            </span>
+            <div>
+              <p
+                className="text-[14px] font-bold leading-tight break-words"
+                style={{ color: checks.returned > 0 ? "#A32D2D" : "#181d26" }}
+              >
+                {formatNumber(checks.returned)}
               </p>
-            )}
+              {checks.returned > 0 && (
+                <p className="text-[11px] text-[#6B7280] break-words mt-0.5">
+                  {formatCurrency(checks.returned_amount)}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -891,57 +832,6 @@ export default function PartnerDashboard() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* ============================================================
-            5. Recent transactions
-        ============================================================ */}
-        <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Receipt
-              className="w-4 h-4"
-              strokeWidth={2.2}
-              style={{ color: "#1b61c9" }}
-            />
-            <h2 className="text-sm font-bold text-[#181d26]">آخر العمليات</h2>
-          </div>
-
-          {transactions.length === 0 ? (
-            <p className="text-sm text-[#6B7280] text-center py-6">
-              لا توجد عمليات حديثة
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {(isExpanded ? transactions : transactions.slice(0, 3)).map((tx) => {
-                const pill = methodPill(tx.payment_method);
-                return (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#181d26] truncate">
-                        {tx.student_name}
-                      </p>
-                      <p className="text-xs text-[#6B7280] mt-0.5">
-                        {formatDate(tx.date)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${pill.className}`}
-                      >
-                        {pill.label}
-                      </span>
-                      <span className="text-sm font-bold text-emerald-600">
-                        {formatCurrency(tx.amount)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* ============================================================
@@ -1207,58 +1097,118 @@ export default function PartnerDashboard() {
         </div>
 
         {/* ============================================================
-            6. Top debtors
+            Collapsible detail sections — hidden on load; the "عرض المزيد"
+            button below reveals / hides آخر العمليات + أعلى المديونيات
+            together via isExpanded.
         ============================================================ */}
-        <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <CircleDollarSign
-              className="w-4 h-4"
-              strokeWidth={2.2}
-              style={{ color: "#1b61c9" }}
-            />
-            <h2 className="text-sm font-bold text-[#181d26]">أعلى المديونيات</h2>
-          </div>
+        {isExpanded && (
+          <>
+            {/* ============================================================
+                5. Recent transactions
+            ============================================================ */}
+            <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Receipt
+                  className="w-4 h-4"
+                  strokeWidth={2.2}
+                  style={{ color: "#1b61c9" }}
+                />
+                <h2 className="text-sm font-bold text-[#181d26]">آخر العمليات</h2>
+              </div>
 
-          {debtors.length === 0 ? (
-            <p className="text-sm text-[#6B7280] text-center py-6">
-              لا توجد مديونيات
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {(isExpanded ? debtors : debtors.slice(0, 3)).map((debtor, idx) => (
-                <div
-                  key={debtor.id}
-                  className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span
-                      className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold flex-shrink-0"
-                      style={{
-                        backgroundColor: idx < 3 ? "#fff1f2" : "#f1f5f9",
-                        color: idx < 3 ? "#e11d48" : "#6B7280",
-                      }}
-                    >
-                      {(idx + 1).toLocaleString("en-US")}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#181d26] truncate">
-                        {debtor.name}
-                      </p>
-                      <p className="text-xs text-[#6B7280] mt-0.5">
-                        {debtor.class}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold text-rose-600 flex-shrink-0">
-                    {formatCurrency(debtor.remaining)}
-                  </span>
+              {transactions.length === 0 ? (
+                <p className="text-sm text-[#6B7280] text-center py-6">
+                  لا توجد عمليات حديثة
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {transactions.map((tx) => {
+                    const pill = methodPill(tx.payment_method);
+                    return (
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-[#181d26] truncate">
+                            {tx.student_name}
+                          </p>
+                          <p className="text-xs text-[#6B7280] mt-0.5">
+                            {formatDate(tx.date)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${pill.className}`}
+                          >
+                            {pill.label}
+                          </span>
+                          <span className="text-sm font-bold text-emerald-600">
+                            {formatCurrency(tx.amount)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Full-width toggle button */}
+            {/* ============================================================
+                6. Top debtors
+            ============================================================ */}
+            <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <CircleDollarSign
+                  className="w-4 h-4"
+                  strokeWidth={2.2}
+                  style={{ color: "#1b61c9" }}
+                />
+                <h2 className="text-sm font-bold text-[#181d26]">أعلى المديونيات</h2>
+              </div>
+
+              {debtors.length === 0 ? (
+                <p className="text-sm text-[#6B7280] text-center py-6">
+                  لا توجد مديونيات
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {debtors.map((debtor, idx) => (
+                    <div
+                      key={debtor.id}
+                      className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold flex-shrink-0"
+                          style={{
+                            backgroundColor: idx < 3 ? "#fff1f2" : "#f1f5f9",
+                            color: idx < 3 ? "#e11d48" : "#6B7280",
+                          }}
+                        >
+                          {(idx + 1).toLocaleString("en-US")}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[#181d26] truncate">
+                            {debtor.name}
+                          </p>
+                          <p className="text-xs text-[#6B7280] mt-0.5">
+                            {debtor.class}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-rose-600 flex-shrink-0">
+                        {formatCurrency(debtor.remaining)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Full-width reveal / collapse toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full flex items-center justify-center gap-2 py-4 rounded-[16px] text-white font-medium transition hover:opacity-90"
@@ -1272,7 +1222,7 @@ export default function PartnerDashboard() {
           ) : (
             <>
               <ChevronDown className="w-5 h-5" />
-              عرض كل العمليات
+              عرض المزيد
             </>
           )}
         </button>
