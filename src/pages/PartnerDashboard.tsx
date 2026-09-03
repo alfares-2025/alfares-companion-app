@@ -686,43 +686,41 @@ export default function PartnerDashboard() {
                above / the الأقساط الدراسية status cells.
         ============================================================ */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Overdue Students — rose tint */}
+          {/* Overdue Students — rose tint, count as a top-left corner badge */}
           <div
-            className="rounded-[14px] border p-3 flex flex-col gap-1"
+            className="rounded-[14px] border p-3 flex flex-col gap-1 relative"
             style={{ backgroundColor: "#FCEBEB", borderColor: "#F0CFCF" }}
           >
-            <span className="text-[11px] font-medium text-[#4B5563]">
-              عدد الطلاب المتأخرين
-            </span>
-            <p
-              className="text-[14px] font-bold leading-tight break-words"
-              style={{ color: students.overdue_count > 0 ? "#A32D2D" : "#181d26" }}
+            <span
+              className="absolute top-2 left-2 min-w-[22px] h-[22px] px-1 rounded-full flex items-center justify-center text-xs font-bold text-white"
+              style={{ backgroundColor: students.overdue_count > 0 ? "#A32D2D" : "#181d26" }}
             >
               {formatNumber(students.overdue_count)}
-            </p>
+            </span>
+            <span className="text-[11px] font-medium text-[#4B5563] pl-8">
+              عدد الطلاب المتأخرين
+            </span>
           </div>
 
-          {/* Returned Checks — rose tint */}
+          {/* Returned Checks — rose tint, count as a top-left corner badge */}
           <div
-            className="rounded-[14px] border p-3 flex flex-col gap-1"
+            className="rounded-[14px] border p-3 flex flex-col gap-1 relative"
             style={{ backgroundColor: "#FCEBEB", borderColor: "#F0CFCF" }}
           >
-            <span className="text-[11px] font-medium text-[#4B5563]">
+            <span
+              className="absolute top-2 left-2 min-w-[22px] h-[22px] px-1 rounded-full flex items-center justify-center text-xs font-bold text-white"
+              style={{ backgroundColor: checks.returned > 0 ? "#A32D2D" : "#181d26" }}
+            >
+              {formatNumber(checks.returned)}
+            </span>
+            <span className="text-[11px] font-medium text-[#4B5563] pl-8">
               شيكات مرجوعة
             </span>
-            <div>
-              <p
-                className="text-[14px] font-bold leading-tight break-words"
-                style={{ color: checks.returned > 0 ? "#A32D2D" : "#181d26" }}
-              >
-                {formatNumber(checks.returned)}
+            {checks.returned > 0 && (
+              <p className="text-[11px] text-[#6B7280] break-words mt-0.5">
+                {formatCurrency(checks.returned_amount)}
               </p>
-              {checks.returned > 0 && (
-                <p className="text-[11px] text-[#6B7280] break-words mt-0.5">
-                  {formatCurrency(checks.returned_amount)}
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
