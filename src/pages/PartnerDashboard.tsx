@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   getFinanceStatistics,
@@ -32,6 +32,10 @@ import {
   Smile,
   Award,
   X,
+  Sun,
+  Moon,
+  Layers,
+  History,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +75,11 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transfer: "تحويل",
   card: "بطاقة",
 };
+
+// Pull-to-refresh tuning (touch gesture on the dashboard)
+const PULL_THRESHOLD = 72; // px the user must pull down before a refresh fires
+const PULL_MAX = 110; // hard cap on how far the indicator travels
+const PULL_RESISTANCE = 0.4; // finger movement past the threshold is damped by this factor
 
 // Avatar options
 type AvatarOption = {
@@ -183,6 +192,43 @@ export default function PartnerDashboard() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string>("accent-blue");
   const [showAvatarPopover, setShowAvatarPopover] = useState(false);
+  const [greeting, setGreeting] = useState<{ text: string; icon: React.ReactNode }>({ text: "صباح الخير", icon: <Sun className="w-4 h-4" style={{ color: "#6B7280" }} /> });
+
+  // Shared in-flight guard so pull-to-refresh and the 60s interval never
+  // fire overlapping fetches.
+  const isFetchingRef = useRef(false);
+  // Pull-to-refresh gesture tracking (touch only)
+  const pullStartYRef = useRef<number | null>(null);
+  const pullActiveRef = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Update greeting based on time
+  useEffect(() => {
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      let greetingText: string;
+      let greetingIcon: React.ReactNode;
+
+      if (hour >= 5 && hour < 12) {
+        greetingText = "صباح الخير";
+        greetingIcon = <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />;
+      } else if (hour >= 12 && hour < 18) {
+        greetingText = "مساء الخير";
+        greetingIcon = <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />;
+      } else {
+        greetingText = "مساء الخير";
+        greetingIcon = <Moon className="w-4 h-4" style={{ color: "#6B7280" }} />;
+      }
+
+      setGreeting({ text: greetingText, icon: greetingIcon });
+    };
+
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 5 * 60 * 1000); // Update every 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Load avatar choice from localStorage
@@ -192,21 +238,30 @@ export default function PartnerDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    Promise.all([
-      getFinanceStatistics(),
-      getTopDebtors(10),
-      getRecentTransactions(10),
-      getCurrentUser(),
-    ])
-      .then(([s, d, t, u]) => {
+  const fetchDashboardData = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      // Skip if a fetch (pull-to-refresh or interval) is already running.
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      try {
+        const [s, d, t, u] = await Promise.all([
+          getFinanceStatistics(),
+          getTopDebtors(10),
+          getRecentTransactions(10),
+          getCurrentUser(),
+        ]);
         setStats(s);
         setDebtors(d);
         setTransactions(t);
         setUser(u);
-        setLoading(false);
-      })
-      .catch((err) => {
+        if (!background) setLoading(false);
+      } catch (err) {
+        if (background) {
+          // Silent background auto-refresh failure — keep the last
+          // successful data on screen and do not disrupt the UI.
+          console.error("Dashboard auto-refresh failed:", err);
+          return;
+        }
         setLoading(false);
         if (err instanceof ApiError && err.status === 401) {
           navigate({ to: "/login" });
@@ -217,8 +272,78 @@ export default function PartnerDashboard() {
             ? err.message
             : "تعذّر الاتصال بالخادم. حاول مرة أخرى.",
         );
+      } finally {
+        isFetchingRef.current = false;
+      }
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    fetchDashboardData();
+    const interval = setInterval(() => {
+      // Skip this tick if a pull-to-refresh (or a previous tick) is in flight.
+      if (!isFetchingRef.current) {
+        fetchDashboardData({ background: true });
+      }
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
+
+  // ---------------------------------------------------------------------------
+  // Pull-to-refresh — touch-only gesture: pull down from the very top to refresh
+  // ---------------------------------------------------------------------------
+  const isAtScrollTop = () =>
+    (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+
+  const handlePullTouchStart = (e: React.TouchEvent) => {
+    // Only arm the gesture when idle and already scrolled to the very top.
+    if (isRefreshing || isFetchingRef.current) return;
+    if (!isAtScrollTop()) return;
+    pullStartYRef.current = e.touches[0].clientY;
+    pullActiveRef.current = true;
+  };
+
+  const handlePullTouchMove = (e: React.TouchEvent) => {
+    if (!pullActiveRef.current || pullStartYRef.current === null) return;
+    // Abort if the user has scrolled away from the top mid-gesture.
+    if (!isAtScrollTop()) {
+      pullActiveRef.current = false;
+      pullStartYRef.current = null;
+      setPullDistance(0);
+      return;
+    }
+    const delta = e.touches[0].clientY - pullStartYRef.current;
+    if (delta <= 0) {
+      setPullDistance(0);
+      return;
+    }
+    // 1:1 up to the threshold, damped past it, hard-capped at PULL_MAX.
+    const damped =
+      delta <= PULL_THRESHOLD
+        ? delta
+        : PULL_THRESHOLD + (delta - PULL_THRESHOLD) * PULL_RESISTANCE;
+    setPullDistance(Math.min(damped, PULL_MAX));
+  };
+
+  const handlePullTouchEnd = () => {
+    if (!pullActiveRef.current) return;
+    pullActiveRef.current = false;
+    pullStartYRef.current = null;
+    if (pullDistance >= PULL_THRESHOLD && !isFetchingRef.current) {
+      setIsRefreshing(true);
+      setPullDistance(PULL_THRESHOLD);
+      Promise.resolve(fetchDashboardData({ background: true })).finally(() => {
+        setIsRefreshing(false);
+        setPullDistance(0);
       });
-  }, [navigate]);
+    } else {
+      // Released before the threshold — snap back with no refresh.
+      setPullDistance(0);
+    }
+  };
+
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
 
   // ---- Loading ----
   if (loading) {
@@ -249,7 +374,44 @@ export default function PartnerDashboard() {
 
   if (!stats) return null;
 
-  const { totals, students, account_status, checks, previous_dues } = stats;
+  const {
+    totals,
+    students,
+    account_status,
+    checks,
+    previous_dues,
+    monthly_collections,
+    installments,
+  } = stats;
+
+  // Peak month used to scale the monthly-collections bars (1.5x headroom).
+  const maxMonthlyCollection = Math.max(
+    ...monthly_collections.map((m) => m.amount),
+    1,
+  );
+
+  // Installments status breakdown (counts) — متأخر / مستحق / جاري / مدفوع
+  const installmentsTotalCount =
+    installments.overdue +
+    installments.due +
+    installments.partial +
+    installments.paid;
+  const installmentSegments = [
+    { key: "overdue", label: "متأخر", count: installments.overdue, bg: "#FCEBEB", border: "#F0CFCF", text: "#A32D2D", bar: "#A32D2D" },
+    { key: "due", label: "مستحق", count: installments.due, bg: "#e8f0fc", border: "#c5d8f0", text: "#1b61c9", bar: "#1b61c9" },
+    { key: "partial", label: "جاري", count: installments.partial, bg: "#f1f5f9", border: "#e0e2e6", text: "#64748b", bar: "#94a3b8" },
+    { key: "paid", label: "مدفوع", count: installments.paid, bg: "#ECF3E4", border: "#D0E0BD", text: "#4F7A1F", bar: "#639922" },
+  ];
+  const installmentPct = (count: number) =>
+    installmentsTotalCount > 0 ? (count / installmentsTotalCount) * 100 : 0;
+
+  // Previous dues source split — مشمول في الرسوم / مستقل
+  const previousDuesSources = [
+    { key: "included", label: "مشمول في الرسوم", amount: previous_dues.included_in_fees, color: "#1b61c9" },
+    { key: "independent", label: "مستقل", amount: previous_dues.independent, color: "#94a3b8" },
+  ];
+  const previousDuesSourceTotal =
+    previous_dues.included_in_fees + previous_dues.independent;
 
   const statusSegments = [
     { label: "مدفوع كامل", count: account_status.paid_full, color: "#639922" },
@@ -266,39 +428,84 @@ export default function PartnerDashboard() {
     account_status.overdue;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#F8FAFC]">
+    <div
+      dir="rtl"
+      className="min-h-screen bg-[#F8FAFC]"
+      onTouchStart={handlePullTouchStart}
+      onTouchMove={handlePullTouchMove}
+      onTouchEnd={handlePullTouchEnd}
+    >
+      {/* Pull-to-refresh indicator (touch only) */}
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center"
+        style={{
+          transform: `translateY(${(isRefreshing ? PULL_THRESHOLD : pullDistance) - 44}px)`,
+          opacity: pullDistance > 0 || isRefreshing ? 1 : 0,
+          transition:
+            pullDistance > 0 && !isRefreshing
+              ? "opacity 0.2s ease"
+              : "transform 0.2s ease, opacity 0.2s ease",
+        }}
+      >
+        <div className="mt-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e0e2e6] bg-white">
+          {isRefreshing ? (
+            <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#1b61c9" }} />
+          ) : (
+            <ChevronDown
+              className="h-4 w-4"
+              style={{
+                color: pullProgress >= 1 ? "#1b61c9" : "#6B7280",
+                transform: `rotate(${pullProgress * 180}deg)`,
+                transition: "transform 0.12s linear, color 0.12s linear",
+              }}
+            />
+          )}
+        </div>
+      </div>
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-3xl mx-auto">
-          {/* Row 1: notification bell + logout icon, grouped on the left edge */}
-          <div className="flex items-center justify-end gap-2 mb-4">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  markAllAsRead();
-                  navigate({ to: "/partner-dashboard/notifications" });
-                }}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-                style={{ backgroundColor: "#e8f0fc" }}
-              >
-                <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
-              </button>
-              {/* Notification dot badge - shows only when there are unread notifications */}
-              {unreadCount > 0 && (
-                <div
-                  className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white"
-                  style={{ backgroundColor: "#EF4444" }}
-                />
-              )}
+          {/* Row 1: greeting (right) + notification bell + logout icon (left) */}
+          <div className="flex items-center justify-between mb-4">
+            {/* Time-based greeting */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-[#6B7280]">
+                {greeting.text}
+              </span>
+              {greeting.icon}
             </div>
-            {/* Logout */}
-            <button
-              onClick={() => navigate({ to: "/login" })}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#6B7280] hover:text-[#181d26] transition"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {/* Notification Bell + Logout */}
+            <div className="flex items-center gap-2">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    markAllAsRead();
+                    navigate({ to: "/partner-dashboard/notifications" });
+                  }}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+                  style={{ backgroundColor: "#e8f0fc" }}
+                >
+                  <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                </button>
+                {/* Notification badge - shows count when there are unread notifications */}
+                {unreadCount > 0 && (
+                  <div
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white"
+                    style={{ backgroundColor: "#EF4444" }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </div>
+                )}
+              </div>
+              {/* Logout */}
+              <button
+                onClick={() => navigate({ to: "/login" })}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#6B7280] hover:text-[#181d26] transition"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           {/* Row 2: avatar, centered */}
           <div className="flex justify-center mb-3 relative">
@@ -427,6 +634,90 @@ export default function PartnerDashboard() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ============================================================
+            Financial totals — total due / remaining / student count
+            (tinted cards, one 3-column row)
+        ============================================================ */}
+        <div className="grid grid-cols-3 gap-3">
+          {/* Total Due — accent tint */}
+          <div
+            className="rounded-[18px] border p-3 flex flex-col gap-2"
+            style={{ backgroundColor: "#e8f0fc", borderColor: "#c5d8f0" }}
+          >
+            <div
+              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
+              style={{ borderColor: "#c5d8f0" }}
+            >
+              <CircleDollarSign
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#1b61c9" }}
+              />
+            </div>
+            <span className="text-[11px] font-medium text-[#4B5563]">
+              إجمالي المستحق
+            </span>
+            <p
+              className="text-[15px] font-bold leading-tight break-words"
+              style={{ color: "#1b61c9" }}
+            >
+              {formatCurrency(totals.total_due)}
+            </p>
+          </div>
+
+          {/* Remaining — amber tint */}
+          <div
+            className="rounded-[18px] border p-3 flex flex-col gap-2"
+            style={{ backgroundColor: "#FAEEDA", borderColor: "#EAD8B0" }}
+          >
+            <div
+              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
+              style={{ borderColor: "#EAD8B0" }}
+            >
+              <AlertCircle
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#BA7517" }}
+              />
+            </div>
+            <span className="text-[11px] font-medium text-[#4B5563]">
+              المتبقي
+            </span>
+            <p
+              className="text-[15px] font-bold leading-tight break-words"
+              style={{ color: totals.total_remaining > 0 ? "#BA7517" : "#181d26" }}
+            >
+              {formatCurrency(totals.total_remaining)}
+            </p>
+          </div>
+
+          {/* Student count — neutral tint */}
+          <div
+            className="rounded-[18px] border p-3 flex flex-col gap-2"
+            style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
+          >
+            <div
+              className="inline-flex items-center justify-center w-[30px] h-[30px] rounded-lg border bg-white"
+              style={{ borderColor: "#e0e2e6" }}
+            >
+              <Users
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#6B7280" }}
+              />
+            </div>
+            <span className="text-[11px] font-medium text-[#4B5563]">
+              عدد الطلاب
+            </span>
+            <p
+              className="text-[15px] font-bold leading-tight break-words"
+              style={{ color: "#181d26" }}
+            >
+              {formatNumber(students.with_fee_account)}
+            </p>
           </div>
         </div>
 
@@ -651,6 +942,268 @@ export default function PartnerDashboard() {
               })}
             </div>
           )}
+        </div>
+
+        {/* ============================================================
+            Monthly collections — horizontal bar per month
+        ============================================================ */}
+        <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp
+              className="w-4 h-4"
+              strokeWidth={2.2}
+              style={{ color: "#1b61c9" }}
+            />
+            <h2 className="text-sm font-bold text-[#181d26]">التحصيلات الشهرية</h2>
+          </div>
+
+          {monthly_collections.length === 0 ? (
+            <p className="text-sm text-[#6B7280] text-center py-6">
+              لا توجد بيانات تحصيل شهرية
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {monthly_collections.map((month) => {
+                // Scale against 1.5x the peak so no bar ever fills the full track.
+                const percentage = Math.min(
+                  (month.amount / (maxMonthlyCollection * 1.5)) * 100,
+                  100,
+                );
+                return (
+                  <div
+                    key={month.month_label}
+                    className="p-3 rounded-lg bg-[#F8FAFC]"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <span className="text-[13px] font-medium text-[#6B7280] whitespace-nowrap">
+                        {month.month_label}
+                      </span>
+                      <span className="text-[13px] font-bold text-[#181d26] whitespace-nowrap">
+                        {formatCurrency(month.amount)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-[#e0e2e6] rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="h-2.5 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${percentage}%`,
+                          backgroundColor: "#1b61c9",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ============================================================
+            Installments breakdown — الأقساط الدراسية
+        ============================================================ */}
+        <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Layers
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#1b61c9" }}
+              />
+              <h2 className="text-sm font-bold text-[#181d26]">الأقساط الدراسية</h2>
+            </div>
+            <span className="text-[12px] font-medium text-[#6B7280] whitespace-nowrap">
+              {formatNumber(installmentsTotalCount)} قسط
+            </span>
+          </div>
+
+          {/* Total installments value */}
+          <div
+            className="rounded-[14px] border p-3 mb-3 flex items-center justify-between gap-2"
+            style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
+          >
+            <span className="text-[12px] font-semibold text-[#4B5563]">
+              إجمالي الأقساط
+            </span>
+            <span className="text-[14px] font-bold text-[#181d26] whitespace-nowrap">
+              {formatCurrency(installments.total_value)}
+            </span>
+          </div>
+
+          {/* Status grid (2×2 on mobile) */}
+          <div className="grid grid-cols-2 gap-2">
+            {installmentSegments.map((seg) => (
+              <div
+                key={seg.key}
+                className="rounded-[14px] border p-3 flex flex-col gap-1"
+                style={{ backgroundColor: seg.bg, borderColor: seg.border }}
+              >
+                <span className="text-[11px] font-medium text-[#4B5563]">
+                  {seg.label}
+                </span>
+                <div className="flex items-baseline gap-1.5">
+                  <span
+                    className="text-[18px] font-bold leading-none"
+                    style={{ color: seg.text }}
+                  >
+                    {formatNumber(seg.count)}
+                  </span>
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: seg.text }}
+                  >
+                    ({installmentPct(seg.count).toFixed(1)}%)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Segmented proportion bar */}
+          {installmentsTotalCount > 0 && (
+            <div className="mt-3 flex h-2 rounded-full overflow-hidden bg-[#e0e2e6]">
+              {installmentSegments.map((seg) => (
+                <div
+                  key={seg.key}
+                  className="h-2"
+                  style={{
+                    width: `${installmentPct(seg.count)}%`,
+                    backgroundColor: seg.bar,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ============================================================
+            Previous-period dues — الذمم السابقة
+        ============================================================ */}
+        <div className="bg-white rounded-[18px] border border-[#e0e2e6] p-5">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <History
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#1b61c9" }}
+              />
+              <h2 className="text-sm font-bold text-[#181d26]">الذمم السابقة</h2>
+            </div>
+            <span className="text-[12px] font-medium text-[#6B7280] whitespace-nowrap">
+              {previous_dues.students_count === 1
+                ? "طالب واحد"
+                : `${formatNumber(previous_dues.students_count)} طلاب`}
+            </span>
+          </div>
+
+          {/* 4 stat rows — full-width tinted line items (currency strings need
+              the room; matches the "إجمالي الأقساط" row style above) */}
+          <div className="space-y-2">
+            {[
+              {
+                key: "remaining",
+                label: "المتبقي",
+                value: formatCurrency(previous_dues.remaining),
+                bg: "#FAEEDA",
+                border: "#EAD8B0",
+                color: previous_dues.remaining > 0 ? "#BA7517" : "#181d26",
+              },
+              {
+                key: "students",
+                label: "عدد الطلاب",
+                value: formatNumber(previous_dues.students_count),
+                bg: "#F8FAFC",
+                border: "#e0e2e6",
+                color: "#181d26",
+              },
+              {
+                key: "paid",
+                label: "المدفوع",
+                value: formatCurrency(previous_dues.paid),
+                bg: "#ECF3E4",
+                border: "#D0E0BD",
+                color: "#4F7A1F",
+              },
+              {
+                key: "total",
+                label: "إجمالي الذمم",
+                value: formatCurrency(previous_dues.total),
+                bg: "#e8f0fc",
+                border: "#c5d8f0",
+                color: "#1b61c9",
+              },
+            ].map((s) => (
+              <div
+                key={s.key}
+                className="rounded-[14px] border p-3 flex items-center justify-between gap-3"
+                style={{ backgroundColor: s.bg, borderColor: s.border }}
+              >
+                <span className="text-[12px] font-semibold text-[#4B5563] whitespace-nowrap">
+                  {s.label}
+                </span>
+                <span
+                  className="text-[14px] font-bold whitespace-nowrap"
+                  style={{ color: s.color }}
+                >
+                  {s.value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Source distribution — توزيع مصدر الذمم */}
+          <div className="mt-4 pt-4 border-t border-[#e0e2e6]">
+            <p className="text-[12px] font-semibold text-[#4B5563] mb-3">
+              توزيع مصدر الذمم
+            </p>
+
+            {previous_dues.total === 0 ? (
+              <p className="text-sm text-[#6B7280] text-center py-4">
+                لا توجد ذمم سابقة
+              </p>
+            ) : previousDuesSourceTotal === 0 ? (
+              <p className="text-sm text-[#6B7280] text-center py-4">
+                لا يوجد تفصيل لمصدر الذمم
+              </p>
+            ) : (
+              <>
+                {/* Segmented bar */}
+                <div className="flex h-2.5 rounded-full overflow-hidden bg-[#e0e2e6] mb-3">
+                  {previousDuesSources.map((src) => (
+                    <div
+                      key={src.key}
+                      className="h-2.5"
+                      style={{
+                        width: `${(src.amount / previousDuesSourceTotal) * 100}%`,
+                        backgroundColor: src.color,
+                      }}
+                    />
+                  ))}
+                </div>
+                {/* Legend */}
+                <div className="space-y-1.5">
+                  {previousDuesSources.map((src) => (
+                    <div
+                      key={src.key}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                          style={{ backgroundColor: src.color }}
+                        />
+                        <span className="text-[12px] text-[#6B7280] truncate">
+                          {src.label}
+                        </span>
+                      </span>
+                      <span className="text-[12px] font-bold text-[#181d26] whitespace-nowrap">
+                        {formatCurrency(src.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* ============================================================

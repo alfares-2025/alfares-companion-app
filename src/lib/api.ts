@@ -151,6 +151,14 @@ export interface MonthlyCollection {
   amount: number;
 }
 
+export interface FinanceInstallments {
+  total_value: number;
+  paid: number;
+  partial: number;
+  due: number;
+  overdue: number;
+}
+
 export interface FinanceChecks {
   received: number;
   deposited: number;
@@ -165,6 +173,8 @@ export interface FinanceChecks {
 
 export interface FinancePreviousDues {
   total: number;
+  included_in_fees: number;
+  independent: number;
   paid: number;
   remaining: number;
   students_count: number;
@@ -175,6 +185,7 @@ export interface FinanceStatistics {
   students: FinanceStudents;
   account_status: FinanceAccountStatus;
   monthly_collections: MonthlyCollection[];
+  installments: FinanceInstallments;
   checks: FinanceChecks;
   previous_dues: FinancePreviousDues;
 }
