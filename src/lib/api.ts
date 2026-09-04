@@ -229,3 +229,102 @@ export async function getRecentTransactions(limit = 10): Promise<RecentTransacti
     { method: "GET" },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Message types
+// ---------------------------------------------------------------------------
+
+export interface MessageConversationParticipant {
+  id: string;
+  name: string;
+  avatar: string | null;
+  role: string | null;
+}
+
+export interface MessageConversationLastMessage {
+  id: string;
+  body: string;
+  senderId: string;
+  createdAt: string | null;
+}
+
+export interface Conversation {
+  id: string;
+  otherParticipant: MessageConversationParticipant | null;
+  lastMessage: MessageConversationLastMessage | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  otherParticipantLastReadMessageId: string | null;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface DirectoryUser {
+  id: string;
+  name: string;
+  avatar: string | null;
+  role: string | null;
+}
+
+// POST /api/messages/conversations returns the find-or-create result itself
+// ({ id, created }), NOT a full Conversation — messageService.js's
+// findOrCreateDirectConversation only ever resolves { id: string, created:
+// boolean } (see messageController.js#createConversation, which does
+// `res.json(result)` with no extra envelope key). Confirmed against the
+// actual backend source, not assumed from the field name.
+export interface CreateConversationResult {
+  id: string;
+  created: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Message API functions
+// ---------------------------------------------------------------------------
+
+export async function getConversations(): Promise<Conversation[]> {
+  const res = await request<{ conversations: Conversation[] }>(
+    "/api/messages/conversations",
+    { method: "GET" },
+  );
+  return res.conversations;
+}
+
+export async function getMessages(conversationId: string): Promise<Message[]> {
+  const res = await request<{ messages: Message[] }>(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { method: "GET" },
+  );
+  return res.messages;
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const res = await request<{ unreadCount: number }>(
+    "/api/messages/unread-count",
+    { method: "GET" },
+  );
+  return res.unreadCount;
+}
+
+export async function getMessageDirectory(): Promise<DirectoryUser[]> {
+  const res = await request<{ directory: DirectoryUser[] }>(
+    "/api/messages/directory",
+    { method: "GET" },
+  );
+  return res.directory;
+}
+
+export async function createConversation(
+  recipientUserId: string,
+): Promise<CreateConversationResult> {
+  return request<CreateConversationResult>("/api/messages/conversations", {
+    method: "POST",
+    body: JSON.stringify({ recipientUserId }),
+  });
+}

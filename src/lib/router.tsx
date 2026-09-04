@@ -11,6 +11,7 @@ import Home from "@/pages/Home";
 import Students from "@/pages/Students";
 import PartnerDashboard from "@/pages/PartnerDashboard";
 import Notifications from "@/pages/Notifications";
+import Messages from "@/pages/Messages";
 
 // ---------------------------------------------------------------------------
 // Root route
@@ -78,6 +79,12 @@ const notificationsRoute = createRoute({
   component: Notifications,
 });
 
+const messagesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/partner-dashboard/messages",
+  component: Messages,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -85,6 +92,7 @@ const routeTree = rootRoute.addChildren([
   studentsRoute,
   partnerDashboardRoute,
   notificationsRoute,
+  messagesRoute,
 ]);
 
 export const router = createRouter({

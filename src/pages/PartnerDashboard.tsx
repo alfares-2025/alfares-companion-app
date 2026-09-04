@@ -5,6 +5,7 @@ import {
   getTopDebtors,
   getRecentTransactions,
   getCurrentUser,
+  getUnreadCount,
   ApiError,
   type FinanceStatistics,
   type TopDebtor,
@@ -23,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Bell,
+  MessageCircle,
   User,
   UserCircle,
   Star,
@@ -201,6 +203,12 @@ export default function PartnerDashboard() {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Messages unread count — independent of NotificationsContext (its generic
+  // notification model doesn't map to conversation-scoped read cursors) and
+  // polled on its own separate interval, not merged into fetchDashboardData.
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  const isMessagesFetchingRef = useRef(false);
+
   // Update greeting based on time
   useEffect(() => {
     const updateGreeting = () => {
@@ -287,6 +295,35 @@ export default function PartnerDashboard() {
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
+
+  // Messages unread-count polling — a separate, parallel 60s interval
+  // mirroring fetchDashboardData's isFetchingRef-guarded shape above, kept
+  // deliberately independent (own ref, own interval) rather than folded into
+  // that Promise.all or into NotificationsContext.
+  const fetchMessagesUnreadCount = useCallback(async () => {
+    if (isMessagesFetchingRef.current) return;
+    isMessagesFetchingRef.current = true;
+    try {
+      const count = await getUnreadCount();
+      setMessagesUnreadCount(count);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        navigate({ to: "/login" });
+        return;
+      }
+      // Silent — a transient failure shouldn't disrupt the dashboard; the
+      // next 60s tick (or the next manual open) retries.
+      console.error("Messages unread-count refresh failed:", err);
+    } finally {
+      isMessagesFetchingRef.current = false;
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchMessagesUnreadCount();
+    const interval = setInterval(fetchMessagesUnreadCount, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchMessagesUnreadCount]);
 
   // ---------------------------------------------------------------------------
   // Pull-to-refresh — touch-only gesture: pull down from the very top to refresh
@@ -474,6 +511,29 @@ export default function PartnerDashboard() {
             </div>
             {/* Notification Bell + Logout */}
             <div className="flex items-center gap-2">
+              {/* Messages — separate entry point from the notification bell,
+                  its own badge/state, does not touch markAllAsRead(). */}
+              <div className="relative">
+                <button
+                  onClick={() => navigate({ to: "/partner-dashboard/messages" })}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+                  style={{ backgroundColor: "#e8f0fc" }}
+                >
+                  <MessageCircle className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                </button>
+                {/* Messages badge — same chip background (#e8f0fc) as the bell
+                    button, so the bell's own border-2 border-white contrast
+                    treatment is reused as-is (not the main app's blue-gradient-
+                    header ring-2 ring-white, which doesn't apply here). */}
+                {messagesUnreadCount > 0 && (
+                  <div
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white"
+                    style={{ backgroundColor: "#1b61c9" }}
+                  >
+                    {messagesUnreadCount > 99 ? "99+" : messagesUnreadCount}
+                  </div>
+                )}
+              </div>
               {/* Notification Bell */}
               <div className="relative">
                 <button
