@@ -15,6 +15,7 @@ import {
   type Message,
 } from "@/lib/api";
 import {
+  CheckCheck,
   ChevronLeft,
   MessageCircle,
   MessagesSquare,
@@ -235,6 +236,61 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [threadMessages]);
 
+  // Read-receipt polling — while a thread is open, periodically refetches
+  // getConversations() and merges ONLY otherParticipantLastReadMessageId for
+  // the open conversation into selectedConversation (threadMessages is left
+  // untouched). Same ~20-25s cadence as PartnerDashboard.tsx's
+  // messagesUnreadCount poller (Batch 1). Cleared whenever the thread closes
+  // (selectedConversation becomes null) or the component unmounts — never
+  // runs while the user is back on the conversations list.
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const conversationId = selectedConversation.id;
+    const interval = setInterval(() => {
+      getConversations()
+        .then((data) => {
+          const match = data.find((c) => c.id === conversationId);
+          if (!match) return;
+          setSelectedConversation((prev) =>
+            prev && prev.id === conversationId
+              ? {
+                  ...prev,
+                  otherParticipantLastReadMessageId:
+                    match.otherParticipantLastReadMessageId,
+                }
+              : prev,
+          );
+        })
+        .catch(() => {
+          // Silent — a transient failure just means the indicator doesn't
+          // update this tick; the next tick retries.
+        });
+    }, 22000);
+    return () => clearInterval(interval);
+  }, [selectedConversation?.id]);
+
+  // The sender's own most-recent message in the open thread — the read
+  // receipt indicator (below) only ever renders on this one bubble, never on
+  // every own message.
+  const lastOwnMessageId = useMemo(() => {
+    for (let i = threadMessages.length - 1; i >= 0; i -= 1) {
+      const m = threadMessages[i];
+      if (currentUserId !== null && String(m.senderId) === currentUserId) {
+        return m.id;
+      }
+    }
+    return null;
+  }, [threadMessages, currentUserId]);
+
+  // Read receipts are cumulative: the other participant reading a later
+  // message implies they've read everything before it, so "seen" is just an
+  // id comparison against their last-read cursor.
+  const isLastOwnMessageSeen = useMemo(() => {
+    const otherLastRead = selectedConversation?.otherParticipantLastReadMessageId;
+    if (!lastOwnMessageId || !otherLastRead) return false;
+    return Number(otherLastRead) >= Number(lastOwnMessageId);
+  }, [selectedConversation?.otherParticipantLastReadMessageId, lastOwnMessageId]);
+
   const handlePickRecipient = (recipient: DirectoryUser) => {
     if (creatingConversationFor) return;
     setCreatingConversationFor(recipient.id);
@@ -382,64 +438,80 @@ export default function Messages() {
                 const isMine =
                   currentUserId !== null && String(m.senderId) === currentUserId;
                 const isConfirmingDelete = confirmDeleteId === m.id;
+                const isLastOwnMessage = isMine && m.id === lastOwnMessageId;
                 return (
-                  <div
-                    key={m.id}
-                    className={`flex items-end gap-1.5 ${
-                      isMine ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    {isMine &&
-                      (isConfirmingDelete ? (
-                        <div className="shrink-0 mb-1 flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap">
-                          <button
-                            onClick={() => handleDeleteMessage(m.id)}
-                            disabled={deletingMessageId === m.id}
-                            className="text-rose-600 hover:text-rose-700 transition disabled:opacity-50"
-                          >
-                            {deletingMessageId === m.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              "نعم"
-                            )}
-                          </button>
-                          <span className="text-[#6B7280]">/</span>
-                          <button
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="text-[#6B7280] hover:text-[#181d26] transition"
-                          >
-                            إلغاء
-                          </button>
-                        </div>
-                      ) : (
-                        // Always subtly visible, not hover-only — this app is
-                        // mobile/touch-shaped and hover-reveal has no
-                        // precedent here.
-                        <button
-                          onClick={() => setConfirmDeleteId(m.id)}
-                          title="حذف الرسالة"
-                          className="shrink-0 mb-1 p-1 rounded text-[#9CA3AF] hover:text-rose-500 transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      ))}
+                  <div key={m.id}>
                     <div
-                      className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${
-                        isMine
-                          ? "text-white"
-                          : "bg-white border border-[#e0e2e6] text-[#181d26]"
+                      className={`flex items-end gap-1.5 ${
+                        isMine ? "justify-end" : "justify-start"
                       }`}
-                      style={isMine ? { backgroundColor: "#1b61c9" } : undefined}
                     >
-                      <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                      <span
-                        className={`mt-1 block text-[10px] ${
-                          isMine ? "text-white/70" : "text-[#6B7280]"
+                      {isMine &&
+                        (isConfirmingDelete ? (
+                          <div className="shrink-0 mb-1 flex items-center gap-1.5 text-[11px] font-bold whitespace-nowrap">
+                            <button
+                              onClick={() => handleDeleteMessage(m.id)}
+                              disabled={deletingMessageId === m.id}
+                              className="text-rose-600 hover:text-rose-700 transition disabled:opacity-50"
+                            >
+                              {deletingMessageId === m.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                "نعم"
+                              )}
+                            </button>
+                            <span className="text-[#6B7280]">/</span>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-[#6B7280] hover:text-[#181d26] transition"
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        ) : (
+                          // Always subtly visible, not hover-only — this app
+                          // is mobile/touch-shaped and hover-reveal has no
+                          // precedent here.
+                          <button
+                            onClick={() => setConfirmDeleteId(m.id)}
+                            title="حذف الرسالة"
+                            className="shrink-0 mb-1 p-1 rounded text-[#9CA3AF] hover:text-rose-500 transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        ))}
+                      <div
+                        className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${
+                          isMine
+                            ? "text-white"
+                            : "bg-white border border-[#e0e2e6] text-[#181d26]"
                         }`}
+                        style={isMine ? { backgroundColor: "#1b61c9" } : undefined}
                       >
-                        {formatMessageTime(m.createdAt)}
-                      </span>
+                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                        <span
+                          className={`mt-1 block text-[10px] ${
+                            isMine ? "text-white/70" : "text-[#6B7280]"
+                          }`}
+                        >
+                          {formatMessageTime(m.createdAt)}
+                        </span>
+                      </div>
                     </div>
+                    {isLastOwnMessage && (
+                      <div className="flex items-center justify-end gap-1 px-1 mt-0.5">
+                        <CheckCheck
+                          className="w-3.5 h-3.5"
+                          style={{ color: isLastOwnMessageSeen ? "#1b61c9" : "#9CA3AF" }}
+                        />
+                        <span
+                          className="text-[10px] font-medium"
+                          style={{ color: isLastOwnMessageSeen ? "#1b61c9" : "#9CA3AF" }}
+                        >
+                          {isLastOwnMessageSeen ? "شوهدت" : "تم الإرسال"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
