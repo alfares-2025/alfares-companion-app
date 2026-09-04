@@ -328,3 +328,38 @@ export async function createConversation(
     body: JSON.stringify({ recipientUserId }),
   });
 }
+
+export async function sendMessage(
+  conversationId: string,
+  body: string,
+): Promise<Message> {
+  const res = await request<{ message: Message }>(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { method: "POST", body: JSON.stringify({ body }) },
+  );
+  return res.message;
+}
+
+// markConversationRead/deleteMessage both resolve `{ ok: true }` as-is (see
+// messageController.js#markConversationAsRead / #deleteConversationMessage —
+// `res.json(result)` where `result` is markConversationRead/deleteMessage's
+// own `{ ok: true }` return value, no further envelope). Confirmed against
+// the actual backend source, not assumed.
+export async function markConversationRead(
+  conversationId: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}/read`,
+    { method: "POST" },
+  );
+}
+
+export async function deleteMessage(
+  conversationId: string,
+  messageId: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+    { method: "DELETE" },
+  );
+}
