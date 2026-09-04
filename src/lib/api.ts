@@ -363,3 +363,19 @@ export async function deleteMessage(
     { method: "DELETE" },
   );
 }
+
+// Per-participant soft-hide — see messageService.js#deleteConversationForCaller
+// on the backend: removes the conversation from the caller's own list only,
+// the other participant's view is unaffected. Route is conversation-level
+// (no messageId segment), unlike deleteMessage above. Resolves { ok: true }
+// as-is (messageController.js#deleteConversation does `res.json(result)`
+// with no further envelope), matching deleteMessage/markConversationRead's
+// own return-shape convention rather than discarding it as void.
+export async function deleteConversation(
+  conversationId: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/messages/conversations/${encodeURIComponent(conversationId)}`,
+    { method: "DELETE" },
+  );
+}

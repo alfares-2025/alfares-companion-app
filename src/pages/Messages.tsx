@@ -8,6 +8,7 @@ import {
   sendMessage,
   markConversationRead,
   deleteMessage,
+  deleteConversation,
   getCurrentUser,
   ApiError,
   type Conversation,
@@ -69,6 +70,20 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // ── Conversation delete (list view) — same per-participant soft-hide as
+  // the main app: removes the conversation from this user's own list only.
+  // Same inline-confirm interaction model as handleDeleteMessage below
+  // (confirmDeleteId / deletingMessageId), just scoped to the list instead
+  // of the thread.
+  const [confirmDeleteConversationId, setConfirmDeleteConversationId] =
+    useState<string | null>(null);
+  const [deletingConversationId, setDeletingConversationId] = useState<
+    string | null
+  >(null);
+  const [conversationDeleteError, setConversationDeleteError] = useState<
+    string | null
+  >(null);
 
   // ── "محادثة جديدة" inline picker (no modal component exists in this repo) ──
   const [showPicker, setShowPicker] = useState(false);
@@ -387,6 +402,39 @@ export default function Messages() {
       });
   };
 
+  // ── Delete conversation (list view only) — per-participant soft-hide,
+  // removes it from this user's own list only; the other participant's view
+  // is unaffected (same DELETE /api/messages/conversations/:conversationId
+  // endpoint the main app uses).
+  const handleDeleteConversation = (conversationId: string) => {
+    if (deletingConversationId) return;
+    setDeletingConversationId(conversationId);
+    deleteConversation(conversationId)
+      .then(() => {
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        setDeletingConversationId(null);
+        setConfirmDeleteConversationId(null);
+        setConversationDeleteError(null);
+        // Defensive only — this action lives on the list row, which never
+        // renders while a thread is open, so selectedConversation is always
+        // null here already. Guards against it anyway in case a future
+        // change adds another entry point into this handler.
+        if (selectedConversation?.id === conversationId) {
+          closeThread();
+        }
+      })
+      .catch((err) => {
+        setDeletingConversationId(null);
+        if (err instanceof ApiError && err.status === 401) {
+          navigate({ to: "/login" });
+          return;
+        }
+        setConversationDeleteError(
+          err instanceof ApiError ? err.message : "تعذّر حذف المحادثة.",
+        );
+      });
+  };
+
   // ── Thread view ──────────────────────────────────────────────────────
   if (selectedConversation) {
     return (
@@ -666,48 +714,106 @@ export default function Messages() {
           </div>
         ) : (
           <div className="space-y-3">
-            {conversations.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => openThread(c)}
-                className={`w-full text-right bg-white rounded-2xl border p-4 flex items-center gap-3 transition hover:shadow-md ${
-                  c.unreadCount > 0 ? "border-[#c5d8f0]" : "border-[#e0e2e6]"
-                } ${c.unreadCount > 0 ? "bg-[#e8f0fc]" : ""}`}
-              >
-                <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-[#e0e2e6] bg-[#F8FAFC] flex items-center justify-center">
-                  {c.otherParticipant?.avatar ? (
-                    <img
-                      src={c.otherParticipant.avatar}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <UserRound className="w-5 h-5 text-[#6B7280]" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="font-bold text-[#181d26] truncate">
-                      {c.otherParticipant?.name || "مستخدم"}
-                    </h2>
-                    <span className="text-[11px] text-[#6B7280] shrink-0 whitespace-nowrap">
-                      {formatRelativeTime(c.lastMessageAt)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#6B7280] truncate mt-0.5">
-                    {c.lastMessage ? truncate(c.lastMessage.body) : "لا توجد رسائل بعد"}
+            {conversations.map((c) =>
+              confirmDeleteConversationId === c.id ? (
+                <div
+                  key={c.id}
+                  className="w-full rounded-2xl border border-rose-200 bg-rose-50 p-4"
+                >
+                  <p className="text-sm font-bold text-[#181d26] mb-1">
+                    حذف المحادثة مع {c.otherParticipant?.name || "مستخدم"}؟
                   </p>
-                </div>
-                {c.unreadCount > 0 && (
-                  <div
-                    className="shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold text-white"
-                    style={{ backgroundColor: "#1b61c9" }}
-                  >
-                    {c.unreadCount > 99 ? "99+" : c.unreadCount}
+                  <p className="text-xs text-[#6B7280] mb-3">
+                    سيتم حذف هذه المحادثة من قائمتك فقط، ولن تتأثر رؤية الطرف
+                    الآخر لها.
+                  </p>
+                  {conversationDeleteError && (
+                    <p className="text-xs text-red-600 font-medium mb-3">
+                      {conversationDeleteError}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDeleteConversation(c.id)}
+                      disabled={deletingConversationId === c.id}
+                      className="flex-1 h-9 rounded-lg bg-rose-600 text-white text-sm font-bold transition hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                    >
+                      {deletingConversationId === c.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "حذف"
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmDeleteConversationId(null);
+                        setConversationDeleteError(null);
+                      }}
+                      className="flex-1 h-9 rounded-lg border border-[#e0e2e6] bg-white text-[#6B7280] text-sm font-bold transition hover:bg-[#F8FAFC]"
+                    >
+                      إلغاء
+                    </button>
                   </div>
-                )}
-              </button>
-            ))}
+                </div>
+              ) : (
+                <div
+                  key={c.id}
+                  className={`w-full bg-white rounded-2xl border p-4 flex items-center gap-2 transition ${
+                    c.unreadCount > 0 ? "border-[#c5d8f0]" : "border-[#e0e2e6]"
+                  } ${c.unreadCount > 0 ? "bg-[#e8f0fc]" : ""}`}
+                >
+                  <button
+                    onClick={() => openThread(c)}
+                    className="flex-1 min-w-0 flex items-center gap-3 text-right hover:opacity-80 transition"
+                  >
+                    <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-[#e0e2e6] bg-[#F8FAFC] flex items-center justify-center">
+                      {c.otherParticipant?.avatar ? (
+                        <img
+                          src={c.otherParticipant.avatar}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <UserRound className="w-5 h-5 text-[#6B7280]" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h2 className="font-bold text-[#181d26] truncate">
+                          {c.otherParticipant?.name || "مستخدم"}
+                        </h2>
+                        <span className="text-[11px] text-[#6B7280] shrink-0 whitespace-nowrap">
+                          {formatRelativeTime(c.lastMessageAt)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#6B7280] truncate mt-0.5">
+                        {c.lastMessage ? truncate(c.lastMessage.body) : "لا توجد رسائل بعد"}
+                      </p>
+                    </div>
+                    {c.unreadCount > 0 && (
+                      <div
+                        className="shrink-0 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold text-white"
+                        style={{ backgroundColor: "#1b61c9" }}
+                      >
+                        {c.unreadCount > 99 ? "99+" : c.unreadCount}
+                      </div>
+                    )}
+                  </button>
+                  {/* Always subtly visible, not hover-only — same treatment
+                      as the message-delete icon in the thread view. */}
+                  <button
+                    onClick={() => {
+                      setConfirmDeleteConversationId(c.id);
+                      setConversationDeleteError(null);
+                    }}
+                    title="حذف المحادثة"
+                    className="shrink-0 p-1.5 rounded text-[#9CA3AF] hover:text-rose-500 transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ),
+            )}
           </div>
         )}
       </main>
