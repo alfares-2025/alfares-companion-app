@@ -385,6 +385,15 @@ export interface ParentFinanceSummary {
   studentCount: number;
 }
 
+// GET /api/parent-portal/payment-notifications/unread-count — count of new
+// payment events across ALL of the guardian's children since they last opened
+// the list. Cursor + count model (mirrors the messaging unread badge), NOT an
+// individual-notifications feed. A family payment split across siblings counts
+// as one event.
+export interface PaymentNotificationCount {
+  unreadCount: number;
+}
+
 export interface ParentFinanceAccount {
   id: string;
   className: string | null;
@@ -474,6 +483,24 @@ export async function getFinanceSummary(): Promise<ParentFinanceSummary> {
   return request<ParentFinanceSummary>(
     "/api/parent-portal/finance-summary",
     { method: "GET" },
+  );
+}
+
+export async function getPaymentNotificationCount(): Promise<PaymentNotificationCount> {
+  return request<PaymentNotificationCount>(
+    "/api/parent-portal/payment-notifications/unread-count",
+    { method: "GET" },
+  );
+}
+
+// "Opening the children list = read" — advances the guardian's server-side
+// cursor to the newest payment so the badge clears next time. Best-effort;
+// callers fire it without blocking the UI, and the count shown this render is
+// intentionally the pre-mark value.
+export async function markPaymentsSeen(): Promise<void> {
+  await request<{ ok: boolean }>(
+    "/api/parent-portal/payment-notifications/mark-seen",
+    { method: "POST" },
   );
 }
 

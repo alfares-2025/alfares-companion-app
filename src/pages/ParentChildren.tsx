@@ -4,6 +4,8 @@ import {
   getParentChildren,
   getSchoolLogo,
   getFinanceSummary,
+  getPaymentNotificationCount,
+  markPaymentsSeen,
   parentLogout,
   ApiError,
   type ParentChild,
@@ -18,6 +20,7 @@ import {
   X,
   Sun,
   Moon,
+  Bell,
 } from "lucide-react";
 
 /**
@@ -63,6 +66,7 @@ export default function ParentChildren() {
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [financeSummary, setFinanceSummary] =
     useState<ParentFinanceSummary | null>(null);
+  const [unreadPayments, setUnreadPayments] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(
@@ -78,19 +82,25 @@ export default function ParentChildren() {
   useEffect(() => {
     Promise.all([
       getParentChildren(),
-      // Best-effort: both are their own (heavier) endpoints and a failure in
-      // either must never blank the page — getParentChildren still carries
-      // any real 401 to the catch below.
+      // Best-effort: these are their own (heavier / secondary) endpoints and a
+      // failure in any must never blank the page — getParentChildren still
+      // carries any real 401 to the catch below.
       getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
       getFinanceSummary().catch(() => null as ParentFinanceSummary | null),
+      getPaymentNotificationCount().catch(() => ({ unreadCount: 0 })),
     ])
-      .then(([data, logo, summary]) => {
+      .then(([data, logo, summary, notif]) => {
         setChildren(data.students);
         setGuardianName(data.guardianName);
         setSchoolName(data.schoolName);
         setSchoolLogo(logo.schoolLogo);
         setFinanceSummary(summary);
+        setUnreadPayments(notif.unreadCount);
         setLoading(false);
+        // "Opening the list = read": clear the badge server-side for next
+        // visit. Fire-and-forget — the count shown this render stays the
+        // pre-mark value on purpose.
+        void markPaymentsSeen().catch(() => {});
       })
       .catch((err) => {
         setLoading(false);
@@ -133,7 +143,7 @@ export default function ParentChildren() {
     <div dir="rtl" className="min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-2xl mx-auto">
-          {/* Row 1: greeting (right) + logout chip (left) */}
+          {/* Row 1: greeting (right) + new-payment bell + logout chip (left) */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span
@@ -148,14 +158,40 @@ export default function ParentChildren() {
                 <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
               )}
             </div>
-            <button
-              onClick={handleLogout}
-              aria-label="تسجيل خروج"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-              style={{ backgroundColor: "#e8f0fc" }}
-            >
-              <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* New-payment bell — display-only for now (no notifications
+                  feed to open yet); the badge shows the count fetched on
+                  mount, before mark-seen clears it for next visit. */}
+              <div className="relative">
+                <div
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+                  style={{ backgroundColor: "#e8f0fc" }}
+                  aria-label={
+                    unreadPayments > 0
+                      ? `${unreadPayments} دفعات جديدة`
+                      : "لا توجد دفعات جديدة"
+                  }
+                >
+                  <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                </div>
+                {unreadPayments > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white"
+                    style={{ backgroundColor: "#1b61c9" }}
+                  >
+                    {unreadPayments > 99 ? "99+" : unreadPayments}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={handleLogout}
+                aria-label="تسجيل خروج"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+                style={{ backgroundColor: "#e8f0fc" }}
+              >
+                <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+              </button>
+            </div>
           </div>
 
           {/* Row 2: school logo + name, centered (both optional) */}
