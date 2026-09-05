@@ -5,11 +5,13 @@ import {
   getSchoolLogo,
   getFinanceSummary,
   getPaymentNotificationCount,
+  getCommitmentSummary,
   markPaymentsSeen,
   parentLogout,
   ApiError,
   type ParentChild,
   type ParentFinanceSummary,
+  type ParentCommitmentSummary,
 } from "@/lib/api";
 import {
   Loader2,
@@ -21,6 +23,7 @@ import {
   Sun,
   Moon,
   Bell,
+  Star,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
@@ -68,6 +71,8 @@ export default function ParentChildren() {
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [financeSummary, setFinanceSummary] =
     useState<ParentFinanceSummary | null>(null);
+  const [commitment, setCommitment] =
+    useState<ParentCommitmentSummary | null>(null);
   const [unreadPayments, setUnreadPayments] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +96,7 @@ export default function ParentChildren() {
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
       try {
-        const [data, logo, summary, notif] = await Promise.all([
+        const [data, logo, summary, notif, commit] = await Promise.all([
           getParentChildren(),
           // Best-effort: these are their own (heavier / secondary) endpoints and a
           // failure in any must never blank the page — getParentChildren still
@@ -99,6 +104,9 @@ export default function ParentChildren() {
           getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
           getFinanceSummary().catch(() => null as ParentFinanceSummary | null),
           getPaymentNotificationCount().catch(() => ({ unreadCount: 0 })),
+          getCommitmentSummary().catch(
+            () => null as ParentCommitmentSummary | null,
+          ),
         ]);
         setChildren(data.students);
         setGuardianName(data.guardianName);
@@ -106,6 +114,7 @@ export default function ParentChildren() {
         setSchoolLogo(logo.schoolLogo);
         setFinanceSummary(summary);
         setUnreadPayments(notif.unreadCount);
+        setCommitment(commit);
         if (!background) setLoading(false);
         // "Opening the list = read": clear the badge server-side for next
         // visit. Fire-and-forget — the count shown this render stays the
@@ -256,6 +265,33 @@ export default function ParentChildren() {
           >
             أهلاً، {firstName(guardianName)}
           </h1>
+
+          {/* Aggregate commitment stars across ALL the guardian's children —
+              same round(committed / total * 5) formula and gold/muted Star
+              treatment as StudentsView.tsx's per-student rating. Hidden
+              entirely when no child has an installment plan yet (total 0),
+              so an absence of data never reads as poor commitment. */}
+          {commitment && commitment.totalInstallments > 0 && (
+            <div
+              className="flex items-center gap-0.5 mt-1.5"
+              role="img"
+              aria-label={`الالتزام ${commitment.starRating} من 5`}
+            >
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Star
+                  key={i}
+                  size={14}
+                  strokeWidth={1.5}
+                  className={
+                    i < commitment.starRating
+                      ? "text-[#F59E0B]"
+                      : "text-[#181d26]/15"
+                  }
+                  fill={i < commitment.starRating ? "currentColor" : "none"}
+                />
+              ))}
+            </div>
+          )}
 
           {/* School logo + name, centered (both optional) */}
           {(schoolLogo || schoolName) && (

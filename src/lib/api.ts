@@ -542,6 +542,24 @@ export async function markPaymentsSeen(): Promise<void> {
   );
 }
 
+// GET /api/parent-portal/commitment-summary — aggregate commitment star
+// rating across ALL of the guardian's children. Mirrors StudentsView.tsx's
+// single-student stars: starRating = round(committed / total * 5). When
+// totalInstallments is 0 (no installment plan for any child yet), the
+// companion app hides the star row rather than showing 0 stars.
+export interface ParentCommitmentSummary {
+  totalInstallments: number;
+  committedInstallments: number;
+  starRating: number;
+}
+
+export async function getCommitmentSummary(): Promise<ParentCommitmentSummary> {
+  return request<ParentCommitmentSummary>(
+    "/api/parent-portal/commitment-summary",
+    { method: "GET" },
+  );
+}
+
 // The full recent-activity feed (Batch 10). Newest-first, server-capped.
 export async function getActivityFeed(): Promise<ParentActivity[]> {
   const res = await request<{ activities: ParentActivity[] }>(
