@@ -32,11 +32,18 @@ function formatCurrency(value: number): string {
 function formatDate(value: string | null): string {
   if (!value) return "—";
   try {
-    return new Date(value).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    const raw = String(value).trim();
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, year, month, day] = match;
+      return `${day}/${month}/${year}`;
+    }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   } catch {
     return value;
   }
