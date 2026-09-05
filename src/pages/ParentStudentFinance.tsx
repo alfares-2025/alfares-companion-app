@@ -21,6 +21,7 @@ import {
   Calendar,
   Sun,
   Moon,
+  Star,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
@@ -742,12 +743,17 @@ export default function ParentStudentFinance() {
                           }}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span
-                              className="text-sm font-bold"
-                              style={{ color: "#181d26" }}
-                            >
-                              رقم القسط: {instNumber}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className="text-sm font-bold"
+                                style={{ color: "#181d26" }}
+                              >
+                                رقم القسط: {instNumber}
+                              </span>
+                              {inst.paymentDate && inst.daysDifference != null && Number(inst.daysDifference) <= 0 && (
+                                <Star size={12} className="text-[#F59E0B]" fill="currentColor" />
+                              )}
+                            </div>
                             <span
                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
                               style={{
