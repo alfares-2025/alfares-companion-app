@@ -1,14 +1,41 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { login, getCurrentUser, parentLogin, ApiError } from "@/lib/api";
+import { login, getCurrentUser, parentLogin, getParentChildren, ApiError } from "@/lib/api";
 import { Loader2, LogIn } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [checkingSession, setCheckingSession] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Check if an existing persistent parent session is already active
+  useEffect(() => {
+    let cancelled = false;
+    getParentChildren()
+      .then(({ students }) => {
+        if (cancelled) return;
+        if (students.length === 1) {
+          navigate({
+            to: "/parent-dashboard/children/$studentId/finance",
+            params: { studentId: students[0].id },
+          });
+        } else {
+          navigate({ to: "/parent-dashboard/children" });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   // Parent-mode toggle — entirely separate state/fields/handler from the
   // staff email/password flow above. Default (isParentMode === false)
@@ -61,6 +88,17 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div
+        dir="rtl"
+        className="min-h-screen flex items-center justify-center bg-slate-100"
+      >
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
   }
 
   return (
