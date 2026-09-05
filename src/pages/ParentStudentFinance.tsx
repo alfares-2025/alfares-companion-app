@@ -22,6 +22,7 @@ import {
   Sun,
   Moon,
   Star,
+  Bell,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
@@ -394,29 +395,44 @@ export default function ParentStudentFinance() {
                 <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
               )}
             </div>
-            {hasMultipleChildren ? (
+            <div className="flex items-center gap-2">
+              {/* Bell → the detailed recent-activity feed (Batch 10). Same chip
+                  as ParentChildren.tsx's header. This is the ONLY entry point
+                  for single-child guardians, who skip the ParentChildren list
+                  screen entirely and land straight here. No badge count —
+                  that would need an extra fetch this page doesn't make. */}
               <button
-                onClick={() =>
-                  navigate({ to: "/parent-dashboard/children" })
-                }
-                className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
-                style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-              >
-                <ChevronRight className="w-4 h-4" />
-                رجوع
-              </button>
-            ) : (
-              // Single-child guardian skipped the list screen at login — there
-              // is nothing to "go back" to, so logout takes its place here.
-              <button
-                onClick={handleLogout}
-                aria-label="تسجيل خروج"
+                onClick={() => navigate({ to: "/parent-dashboard/activity" })}
+                aria-label="النشاط المالي"
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
                 style={{ backgroundColor: "#e8f0fc" }}
               >
-                <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
               </button>
-            )}
+              {hasMultipleChildren ? (
+                <button
+                  onClick={() =>
+                    navigate({ to: "/parent-dashboard/children" })
+                  }
+                  className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
+                  style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                  رجوع
+                </button>
+              ) : (
+                // Single-child guardian skipped the list screen at login —
+                // there is nothing to "go back" to, so logout takes its place.
+                <button
+                  onClick={handleLogout}
+                  aria-label="تسجيل خروج"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+                  style={{ backgroundColor: "#e8f0fc" }}
+                >
+                  <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Row 2: school logo + name, centered (both optional) */}
