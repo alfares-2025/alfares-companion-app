@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -22,6 +22,8 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
 
 // Local copies of PartnerDashboard.tsx's formatting helpers — that file
 // doesn't export them, so they're replicated here rather than imported.
@@ -192,30 +194,38 @@ export default function ParentStudentFinance() {
   );
 
   const [greeting, setGreeting] = useState(computeGreeting);
+  
+  // Shared in-flight guard so pull-to-refresh never fires overlapping fetches.
+  const isFetchingRef = useRef(false);
+
   useEffect(() => {
     const id = setInterval(() => setGreeting(computeGreeting()), 5 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!studentId) {
-      navigate({ to: "/parent-dashboard/children" });
-      return;
-    }
+  const fetchFinanceData = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      // Skip if a fetch (pull-to-refresh) is already running.
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      
+      if (!studentId) {
+        navigate({ to: "/parent-dashboard/children" });
+        isFetchingRef.current = false;
+        return;
+      }
 
-    let cancelled = false;
-
-    // Fetched together: the finance data itself; the guardian's full child
-    // list (for the >1-child back/logout switch, this student's own name, and
-    // the header greeting name/school); and the school logo (best-effort — its
-    // own heavier endpoint, must never break the page).
-    Promise.all([
-      getStudentFinance(studentId),
-      getParentChildren(),
-      getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
-    ])
-      .then(([financeData, childrenData, logo]) => {
-        if (cancelled) return;
+      try {
+        // Fetched together: the finance data itself; the guardian's full child
+        // list (for the >1-child back/logout switch, this student's own name, and
+        // the header greeting name/school); and the school logo (best-effort — its
+        // own heavier endpoint, must never break the page).
+        const [financeData, childrenData, logo] = await Promise.all([
+          getStudentFinance(studentId),
+          getParentChildren(),
+          getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
+        ]);
+        
         setFinance(financeData);
         setHasMultipleChildren(childrenData.students.length > 1);
         setGuardianName(childrenData.guardianName);
@@ -225,10 +235,14 @@ export default function ParentStudentFinance() {
           (c) => String(c.id) === String(studentId),
         );
         setStudentName(match?.name ?? null);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (cancelled) return;
+        if (!background) setLoading(false);
+      } catch (err) {
+        if (background) {
+          // Silent background auto-refresh failure — keep the last
+          // successful data on screen and do not disrupt the UI.
+          console.error("Parent finance auto-refresh failed:", err);
+          return;
+        }
         setLoading(false);
         if (err instanceof ApiError) {
           if (err.status === 401) {
@@ -253,12 +267,29 @@ export default function ParentStudentFinance() {
         } else {
           setError("تعذّر الاتصال بالخادم. حاول مرة أخرى.");
         }
-      });
+      } finally {
+        isFetchingRef.current = false;
+      }
+    },
+    [studentId, navigate],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [studentId, navigate]);
+  useEffect(() => {
+    fetchFinanceData();
+  }, [fetchFinanceData]);
+
+  // Pull-to-refresh
+  const {
+    pullDistance,
+    isRefreshing,
+    pullProgress,
+    handlePullTouchStart,
+    handlePullTouchMove,
+    handlePullTouchEnd,
+  } = usePullToRefresh({
+    onRefresh: () => fetchFinanceData({ background: true }),
+    isFetchingRef,
+  });
 
   async function handleLogout() {
     try {
@@ -331,7 +362,20 @@ export default function ParentStudentFinance() {
   const RING_C = 2 * Math.PI * 36;
 
   return (
-    <div dir="rtl" className="min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+    <div
+      dir="rtl"
+      className="min-h-screen"
+      style={{ backgroundColor: "#F8FAFC" }}
+      onTouchStart={handlePullTouchStart}
+      onTouchMove={handlePullTouchMove}
+      onTouchEnd={handlePullTouchEnd}
+    >
+      {/* Pull-to-refresh indicator (touch only) */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        isRefreshing={isRefreshing}
+        pullProgress={pullProgress}
+      />
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-2xl mx-auto">
           {/* Row 1: greeting (right) + back / logout (left) */}

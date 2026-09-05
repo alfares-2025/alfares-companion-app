@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   getParentChildren,
@@ -22,6 +22,8 @@ import {
   Moon,
   Bell,
 } from "lucide-react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
 
 /**
  * Parent Portal — children list (multi-child guardians land here after
@@ -74,35 +76,48 @@ export default function ParentChildren() {
   );
 
   const [greeting, setGreeting] = useState(computeGreeting);
+  
+  // Shared in-flight guard so pull-to-refresh never fires overlapping fetches.
+  const isFetchingRef = useRef(false);
+
   useEffect(() => {
     const id = setInterval(() => setGreeting(computeGreeting()), 5 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    Promise.all([
-      getParentChildren(),
-      // Best-effort: these are their own (heavier / secondary) endpoints and a
-      // failure in any must never blank the page — getParentChildren still
-      // carries any real 401 to the catch below.
-      getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
-      getFinanceSummary().catch(() => null as ParentFinanceSummary | null),
-      getPaymentNotificationCount().catch(() => ({ unreadCount: 0 })),
-    ])
-      .then(([data, logo, summary, notif]) => {
+  const fetchChildrenData = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      // Skip if a fetch (pull-to-refresh) is already running.
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      try {
+        const [data, logo, summary, notif] = await Promise.all([
+          getParentChildren(),
+          // Best-effort: these are their own (heavier / secondary) endpoints and a
+          // failure in any must never blank the page — getParentChildren still
+          // carries any real 401 to the catch below.
+          getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
+          getFinanceSummary().catch(() => null as ParentFinanceSummary | null),
+          getPaymentNotificationCount().catch(() => ({ unreadCount: 0 })),
+        ]);
         setChildren(data.students);
         setGuardianName(data.guardianName);
         setSchoolName(data.schoolName);
         setSchoolLogo(logo.schoolLogo);
         setFinanceSummary(summary);
         setUnreadPayments(notif.unreadCount);
-        setLoading(false);
+        if (!background) setLoading(false);
         // "Opening the list = read": clear the badge server-side for next
         // visit. Fire-and-forget — the count shown this render stays the
         // pre-mark value on purpose.
         void markPaymentsSeen().catch(() => {});
-      })
-      .catch((err) => {
+      } catch (err) {
+        if (background) {
+          // Silent background auto-refresh failure — keep the last
+          // successful data on screen and do not disrupt the UI.
+          console.error("Parent children auto-refresh failed:", err);
+          return;
+        }
         setLoading(false);
         if (err instanceof ApiError && err.status === 401) {
           navigate({ to: "/login" });
@@ -113,8 +128,29 @@ export default function ParentChildren() {
             ? err.message
             : "تعذّر الاتصال بالخادم. حاول مرة أخرى.",
         );
-      });
-  }, [navigate]);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    fetchChildrenData();
+  }, [fetchChildrenData]);
+
+  // Pull-to-refresh
+  const {
+    pullDistance,
+    isRefreshing,
+    pullProgress,
+    handlePullTouchStart,
+    handlePullTouchMove,
+    handlePullTouchEnd,
+  } = usePullToRefresh({
+    onRefresh: () => fetchChildrenData({ background: true }),
+    isFetchingRef,
+  });
 
   async function handleLogout() {
     try {
@@ -140,7 +176,20 @@ export default function ParentChildren() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+    <div
+      dir="rtl"
+      className="min-h-screen"
+      style={{ backgroundColor: "#F8FAFC" }}
+      onTouchStart={handlePullTouchStart}
+      onTouchMove={handlePullTouchMove}
+      onTouchEnd={handlePullTouchEnd}
+    >
+      {/* Pull-to-refresh indicator (touch only) */}
+      <PullToRefreshIndicator
+        pullDistance={pullDistance}
+        isRefreshing={isRefreshing}
+        pullProgress={pullProgress}
+      />
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-2xl mx-auto">
           {/* Row 1: greeting (right) + new-payment bell + logout chip (left) */}
