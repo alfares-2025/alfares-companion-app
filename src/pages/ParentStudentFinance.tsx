@@ -18,6 +18,7 @@ import {
   CircleDollarSign,
   Receipt,
   History,
+  Calendar,
   Sun,
   Moon,
 } from "lucide-react";
@@ -63,6 +64,53 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transfer: "تحويل",
   card: "بطاقة",
 };
+
+const INSTALLMENT_STATUS_CONFIG: Record<
+  string,
+  { label: string; bg: string; text: string; border: string }
+> = {
+  paid: {
+    label: "مدفوع",
+    bg: "#ECF3E4",
+    text: "#4F7A1F",
+    border: "#D0E0BD",
+  },
+  partial: {
+    label: "جزئي",
+    bg: "#FAEEDA",
+    text: "#BA7517",
+    border: "#F5D9B0",
+  },
+  overdue: {
+    label: "متأخر",
+    bg: "#FCEBEB",
+    text: "#A32D2D",
+    border: "#F0CFCF",
+  },
+  unpaid: {
+    label: "غير مدفوع",
+    bg: "#F8FAFC",
+    text: "#6B7280",
+    border: "#e0e2e6",
+  },
+};
+
+function getInstallmentStatus(status: string | null | undefined): {
+  label: string;
+  bg: string;
+  text: string;
+  border: string;
+} {
+  const normalized = (status ?? "").toLowerCase().trim();
+  return (
+    INSTALLMENT_STATUS_CONFIG[normalized] ?? {
+      label: status || "غير مدفوع",
+      bg: "#F8FAFC",
+      text: "#6B7280",
+      border: "#e0e2e6",
+    }
+  );
+}
 
 /** MetricCard — copy-adapted from PartnerDashboard.tsx (lines ~144-177). */
 function MetricCard({
@@ -253,7 +301,13 @@ export default function ParentStudentFinance() {
 
   if (!finance) return null;
 
-  const { account, feeItems, payments, academicPeriodId } = finance;
+  const {
+    account,
+    feeItems,
+    payments,
+    academicPeriodId,
+    installments = [],
+  } = finance;
 
   // Paid-vs-due ratio for the hero ring. No `collection_rate` on the parent
   // finance payload, so derive it; clamp for the overpaid / zero-due cases.
@@ -548,6 +602,132 @@ export default function ParentStudentFinance() {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Installments */}
+            <div
+              className="bg-white rounded-[18px] border p-5"
+              style={{ borderColor: "#e0e2e6" }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar
+                  className="w-4 h-4"
+                  strokeWidth={2.2}
+                  style={{ color: "#1b61c9" }}
+                />
+                <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
+                  الأقساط
+                </h2>
+              </div>
+              {installments.length === 0 ? (
+                <p
+                  className="text-sm text-center py-6"
+                  style={{ color: "#6B7280" }}
+                >
+                  لا توجد أقساط مسجلة
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {installments.map((inst, index) => {
+                    const statusConfig = getInstallmentStatus(inst.status);
+                    const instNumber =
+                      inst.installmentNo != null ? inst.installmentNo : index + 1;
+                    return (
+                      <div
+                        key={`${inst.installmentNo ?? index}-${index}`}
+                        className="rounded-[14px] border p-3.5 space-y-2.5"
+                        style={{
+                          backgroundColor: "#F8FAFC",
+                          borderColor: "#e0e2e6",
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="text-sm font-bold"
+                            style={{ color: "#181d26" }}
+                          >
+                            رقم القسط: {instNumber}
+                          </span>
+                          <span
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+                            style={{
+                              backgroundColor: statusConfig.bg,
+                              color: statusConfig.text,
+                              borderColor: statusConfig.border,
+                            }}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[12px]">
+                          <span style={{ color: "#6B7280" }}>تاريخ الاستحقاق</span>
+                          <span
+                            className="font-medium"
+                            style={{ color: "#181d26" }}
+                          >
+                            {formatDate(inst.dueDate)}
+                          </span>
+                        </div>
+
+                        <div
+                          className="grid grid-cols-3 gap-2 pt-2 border-t text-right"
+                          style={{ borderColor: "#e0e2e6" }}
+                        >
+                          <div>
+                            <p
+                              className="text-[11px] mb-0.5"
+                              style={{ color: "#6B7280" }}
+                            >
+                              المبلغ المستحق
+                            </p>
+                            <p
+                              className="text-[13px] font-bold"
+                              style={{ color: "#181d26" }}
+                            >
+                              {formatCurrency(inst.amountDue)}
+                            </p>
+                          </div>
+                          <div>
+                            <p
+                              className="text-[11px] mb-0.5"
+                              style={{ color: "#6B7280" }}
+                            >
+                              المدفوع
+                            </p>
+                            <p
+                              className="text-[13px] font-bold"
+                              style={{
+                                color:
+                                  inst.amountPaid > 0 ? "#4F7A1F" : "#181d26",
+                              }}
+                            >
+                              {formatCurrency(inst.amountPaid)}
+                            </p>
+                          </div>
+                          <div>
+                            <p
+                              className="text-[11px] mb-0.5"
+                              style={{ color: "#6B7280" }}
+                            >
+                              المتبقي
+                            </p>
+                            <p
+                              className="text-[13px] font-bold"
+                              style={{
+                                color:
+                                  inst.balance > 0 ? "#BA7517" : "#181d26",
+                              }}
+                            >
+                              {formatCurrency(inst.balance)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

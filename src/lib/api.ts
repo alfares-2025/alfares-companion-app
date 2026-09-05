@@ -436,6 +436,14 @@ export interface ParentStudentFinance {
   account: ParentFinanceAccount | null;
   feeItems: ParentFeeItem[];
   payments: ParentPayment[];
+  installments: {
+    installmentNo: number | string;
+    dueDate: string | null;
+    amountDue: number;
+    amountPaid: number;
+    balance: number;
+    status: string;
+  }[];
 }
 
 // ---------------------------------------------------------------------------
