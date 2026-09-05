@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -183,29 +183,6 @@ export default function ParentStudentFinance() {
   const [activeTab, setActiveTab] = useState<"installments" | "payments">(
     "installments",
   );
-  const tabsSectionRef = useRef<HTMLDivElement>(null);
-  const tabsHeaderRef = useRef<HTMLDivElement>(null);
-
-  function handleTabChange(newTab: "installments" | "payments") {
-    if (activeTab === newTab) return;
-
-    let isVisible = true;
-    if (tabsHeaderRef.current) {
-      const rect = tabsHeaderRef.current.getBoundingClientRect();
-      const vHeight =
-        window.innerHeight || document.documentElement.clientHeight;
-      isVisible = rect.top >= 0 && rect.bottom <= vHeight;
-    }
-
-    setActiveTab(newTab);
-
-    if (!isVisible && tabsSectionRef.current) {
-      tabsSectionRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }
 
   const [greeting, setGreeting] = useState(computeGreeting);
   useEffect(() => {
@@ -634,19 +611,17 @@ export default function ParentStudentFinance() {
 
             {/* Installments & Payment History Tabs */}
             <div
-              ref={tabsSectionRef}
               className="bg-white rounded-[18px] border p-5"
               style={{ borderColor: "#e0e2e6" }}
             >
               {/* Tabs Switcher */}
               <div
-                ref={tabsHeaderRef}
                 className="flex items-center p-1 rounded-xl mb-4"
                 style={{ backgroundColor: "#F1F5F9" }}
               >
                 <button
                   type="button"
-                  onClick={() => handleTabChange("installments")}
+                  onClick={() => setActiveTab("installments")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                     activeTab === "installments"
                       ? "bg-white shadow-sm"
@@ -669,7 +644,7 @@ export default function ParentStudentFinance() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTabChange("payments")}
+                  onClick={() => setActiveTab("payments")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                     activeTab === "payments"
                       ? "bg-white shadow-sm"
