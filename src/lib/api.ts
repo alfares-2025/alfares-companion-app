@@ -443,8 +443,6 @@ export interface ParentStudentFinance {
     amountPaid: number;
     balance: number;
     status: string;
-    paymentDate: string | null;
-    daysDifference: number | null;
     isCommitted: boolean;
   }[];
 }

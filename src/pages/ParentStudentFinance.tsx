@@ -750,7 +750,7 @@ export default function ParentStudentFinance() {
                               >
                                 رقم القسط: {instNumber}
                               </span>
-                              {inst.paymentDate && inst.daysDifference != null && Number(inst.daysDifference) <= 0 && (
+                              {inst.isCommitted && (
                                 <Star size={12} className="text-[#F59E0B]" fill="currentColor" />
                               )}
                             </div>
