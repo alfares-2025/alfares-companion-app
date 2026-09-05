@@ -394,6 +394,35 @@ export interface PaymentNotificationCount {
   unreadCount: number;
 }
 
+// GET /api/parent-portal/activity-feed — the detailed recent-activity feed
+// (Batch 10): a real per-event list across ALL the guardian's children, not
+// the payment-only count above. Each row is one financial event with its own
+// server-set timestamp. Matches parentPortalService.js#getGuardianActivityFeed
+// exactly (parentPortalController.js#getActivityFeed does
+// `res.json({ activities })`).
+export type ParentActivityType =
+  | "payment"
+  | "check_returned"
+  | "fee_charged"
+  | "discount_applied"
+  | "payment_cancelled";
+
+export interface ParentActivity {
+  type: ParentActivityType;
+  // ISO-ish "YYYY-MM-DDTHH:MM:SS" (server-normalized); null only if a source
+  // row somehow had no timestamp (filtered out server-side, so effectively
+  // always present).
+  timestamp: string | null;
+  // null for a family payment that spanned more than one child (studentName
+  // is then "عدة أبناء"); otherwise the specific child.
+  studentId: string | null;
+  studentName: string;
+  // Prebuilt Arabic sentence, ready to render as-is.
+  description: string;
+  // Signed: negative for discounts, positive otherwise.
+  amount: number;
+}
+
 export interface ParentFinanceAccount {
   id: string;
   className: string | null;
@@ -509,6 +538,25 @@ export async function getPaymentNotificationCount(): Promise<PaymentNotification
 export async function markPaymentsSeen(): Promise<void> {
   await request<{ ok: boolean }>(
     "/api/parent-portal/payment-notifications/mark-seen",
+    { method: "POST" },
+  );
+}
+
+// The full recent-activity feed (Batch 10). Newest-first, server-capped.
+export async function getActivityFeed(): Promise<ParentActivity[]> {
+  const res = await request<{ activities: ParentActivity[] }>(
+    "/api/parent-portal/activity-feed",
+    { method: "GET" },
+  );
+  return res.activities;
+}
+
+// "Opening the activity page = read" — advances the guardian's server-side
+// wall-clock cursor to now, so items seen this visit don't count as new next
+// time. Best-effort; callers fire it after a successful load without blocking.
+export async function markActivitySeen(): Promise<void> {
+  await request<{ ok: boolean }>(
+    "/api/parent-portal/activity-feed/mark-seen",
     { method: "POST" },
   );
 }

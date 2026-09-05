@@ -208,24 +208,29 @@ export default function ParentChildren() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {/* New-payment bell — display-only for now (no notifications
-                  feed to open yet); the badge shows the count fetched on
-                  mount, before mark-seen clears it for next visit. */}
+              {/* Bell → the detailed recent-activity feed (Batch 10). The
+                  badge still shows the Batch 8 new-payment count (the most
+                  salient event type), fetched on mount before mark-seen
+                  clears it; the activity page keeps its own separate
+                  "seen" cursor. */}
               <div className="relative">
-                <div
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg"
+                <button
+                  onClick={() =>
+                    navigate({ to: "/parent-dashboard/activity" })
+                  }
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
                   style={{ backgroundColor: "#e8f0fc" }}
                   aria-label={
                     unreadPayments > 0
-                      ? `${unreadPayments} دفعات جديدة`
-                      : "لا توجد دفعات جديدة"
+                      ? `النشاط المالي — ${unreadPayments} دفعات جديدة`
+                      : "النشاط المالي"
                   }
                 >
                   <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
-                </div>
+                </button>
                 {unreadPayments > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white"
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white pointer-events-none"
                     style={{ backgroundColor: "#1b61c9" }}
                   >
                     {unreadPayments > 99 ? "99+" : unreadPayments}

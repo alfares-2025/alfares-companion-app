@@ -14,6 +14,7 @@ import Notifications from "@/pages/Notifications";
 import Messages from "@/pages/Messages";
 import ParentChildren from "@/pages/ParentChildren";
 import ParentStudentFinance from "@/pages/ParentStudentFinance";
+import ParentActivity from "@/pages/ParentActivity";
 
 // ---------------------------------------------------------------------------
 // Root route
@@ -106,6 +107,16 @@ const parentStudentFinanceRoute = createRoute({
   component: ParentStudentFinance,
 });
 
+// Batch 10 — the detailed recent-activity feed across all the guardian's
+// children. Reached from the bell in ParentChildren's header. Resolves its
+// own auth/data on mount and handles its own 401 redirect, same convention
+// as every route above (no route-level guard).
+const parentActivityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/parent-dashboard/activity",
+  component: ParentActivity,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -116,6 +127,7 @@ const routeTree = rootRoute.addChildren([
   messagesRoute,
   parentChildrenRoute,
   parentStudentFinanceRoute,
+  parentActivityRoute,
 ]);
 
 export const router = createRouter({
