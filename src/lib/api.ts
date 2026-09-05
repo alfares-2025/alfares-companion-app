@@ -340,6 +340,106 @@ export async function sendMessage(
   return res.message;
 }
 
+// ---------------------------------------------------------------------------
+// Parent Portal types
+// ---------------------------------------------------------------------------
+
+export interface ParentChild {
+  id: string;
+  name: string;
+  grade: string | null;
+}
+
+export interface ParentLoginResponse {
+  students: ParentChild[];
+}
+
+export interface ParentFinanceAccount {
+  id: string;
+  className: string | null;
+  tuitionTotal: number;
+  discountAmount: number;
+  otherFeesTotal: number;
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+  lastPaymentDate: string | null;
+  status: string | null;
+}
+
+export interface ParentFeeItem {
+  id: string;
+  itemType: string | null;
+  itemName: string | null;
+  amount: number;
+  isDiscount: boolean;
+  status: string | null;
+}
+
+export interface ParentPayment {
+  id: string;
+  amount: number;
+  paymentDate: string | null;
+  paymentMethod: string | null;
+  paymentCategory: string | null;
+  status: string | null;
+}
+
+// Matches services/parentPortalService.js#getStudentFinanceSummary's return
+// shape exactly (Batch 3, backend/controllers/parentPortalController.js#
+// getStudentFinance does `res.json(finance)` with no extra envelope).
+// `account: null` is the graceful empty state for "no current academic
+// period" (academicPeriodId also null then) or "no fee account opened yet"
+// (academicPeriodId still set) — never an error response.
+export interface ParentStudentFinance {
+  academicPeriodId: string | number | null;
+  account: ParentFinanceAccount | null;
+  feeItems: ParentFeeItem[];
+  payments: ParentPayment[];
+}
+
+// ---------------------------------------------------------------------------
+// Parent Portal API functions
+// ---------------------------------------------------------------------------
+
+// Body field name is `guardianNationalId`, matching
+// parentPortalController.js#parentLogin exactly — no `schoolId` is ever
+// sent (the backend resolves the school from which access code matches).
+export async function parentLogin(
+  guardianNationalId: string,
+  code: string,
+): Promise<ParentLoginResponse> {
+  return request<ParentLoginResponse>("/api/parent-portal/login", {
+    method: "POST",
+    body: JSON.stringify({ guardianNationalId, code }),
+  });
+}
+
+export async function getParentChildren(): Promise<ParentChild[]> {
+  const res = await request<{ students: ParentChild[] }>(
+    "/api/parent-portal/students",
+    { method: "GET" },
+  );
+  return res.students;
+}
+
+export async function getStudentFinance(
+  studentId: string,
+): Promise<ParentStudentFinance> {
+  return request<ParentStudentFinance>(
+    `/api/parent-portal/students/${encodeURIComponent(studentId)}/finance`,
+    { method: "GET" },
+  );
+}
+
+// Unlike the staff logout() above, this one is real — the backend endpoint
+// exists (Batch 2) and this actually clears req.session.parent server-side.
+export async function parentLogout(): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>("/api/parent-portal/logout", {
+    method: "POST",
+  });
+}
+
 // markConversationRead/deleteMessage both resolve `{ ok: true }` as-is (see
 // messageController.js#markConversationAsRead / #deleteConversationMessage —
 // `res.json(result)` where `result` is markConversationRead/deleteMessage's

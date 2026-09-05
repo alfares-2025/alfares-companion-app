@@ -12,6 +12,8 @@ import Students from "@/pages/Students";
 import PartnerDashboard from "@/pages/PartnerDashboard";
 import Notifications from "@/pages/Notifications";
 import Messages from "@/pages/Messages";
+import ParentChildren from "@/pages/ParentChildren";
+import ParentStudentFinance from "@/pages/ParentStudentFinance";
 
 // ---------------------------------------------------------------------------
 // Root route
@@ -85,6 +87,25 @@ const messagesRoute = createRoute({
   component: Messages,
 });
 
+// ---------------------------------------------------------------------------
+// Parent Portal — children list + one child's finance detail. Each page
+// resolves its own auth/data via req.session.parent-backed endpoints and
+// handles its own 401 redirect on mount, same convention as every route
+// above (no route-level guard).
+// ---------------------------------------------------------------------------
+
+const parentChildrenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/parent-dashboard/children",
+  component: ParentChildren,
+});
+
+const parentStudentFinanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/parent-dashboard/children/$studentId/finance",
+  component: ParentStudentFinance,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -93,6 +114,8 @@ const routeTree = rootRoute.addChildren([
   partnerDashboardRoute,
   notificationsRoute,
   messagesRoute,
+  parentChildrenRoute,
+  parentStudentFinanceRoute,
 ]);
 
 export const router = createRouter({
