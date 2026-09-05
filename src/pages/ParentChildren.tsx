@@ -248,7 +248,16 @@ export default function ParentChildren() {
             </div>
           </div>
 
-          {/* Row 2: school logo + name, centered (both optional) */}
+          {/* Greeting heading — directly below the top row, aligned to match the
+              time-of-day greeting above it (right, in RTL). */}
+          <h1
+            className="text-[22px] font-medium text-right"
+            style={{ color: "#181d26" }}
+          >
+            أهلاً، {firstName(guardianName)}
+          </h1>
+
+          {/* School logo + name, centered (both optional) */}
           {(schoolLogo || schoolName) && (
             <div className="flex flex-col items-center gap-2 mb-3">
               {schoolLogo && (
@@ -270,13 +279,7 @@ export default function ParentChildren() {
             </div>
           )}
 
-          {/* Row 3: greeting heading + subtitle, centered */}
-          <h1
-            className="text-[22px] font-medium text-center"
-            style={{ color: "#181d26" }}
-          >
-            أهلاً، {firstName(guardianName)}
-          </h1>
+          {/* Subtitle */}
           <p
             className="text-[13px] text-center mt-1"
             style={{ color: "#6B7280" }}
@@ -475,6 +478,24 @@ export default function ParentChildren() {
           </>
         )}
       </main>
+
+      {/* Footer - Copyright */}
+      <footer className="px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center space-y-1">
+          <p
+            className="text-[11px]"
+            style={{ color: "#6B7280" }}
+          >
+            جميع الحقوق محفوظة © {new Date().getFullYear()} شركة nun
+          </p>
+          <p
+            className="text-[12px] font-bold"
+            style={{ color: "#6B7280" }}
+          >
+            AL-FARES Private Schools
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

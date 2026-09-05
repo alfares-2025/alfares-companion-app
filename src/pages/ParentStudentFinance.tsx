@@ -5,7 +5,6 @@ import {
   getStudentFinance,
   getParentChildren,
   getSchoolLogo,
-  parentLogout,
   ApiError,
   type ParentStudentFinance as ParentStudentFinanceData,
 } from "@/lib/api";
@@ -13,7 +12,6 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
-  LogOut,
   Wallet,
   CircleDollarSign,
   Receipt,
@@ -184,7 +182,6 @@ export default function ParentStudentFinance() {
   const [finance, setFinance] = useState<ParentStudentFinanceData | null>(
     null,
   );
-  const [hasMultipleChildren, setHasMultipleChildren] = useState(false);
   const [studentName, setStudentName] = useState<string | null>(null);
   const [guardianName, setGuardianName] = useState("");
   const [schoolName, setSchoolName] = useState<string | null>(null);
@@ -219,17 +216,16 @@ export default function ParentStudentFinance() {
 
       try {
         // Fetched together: the finance data itself; the guardian's full child
-        // list (for the >1-child back/logout switch, this student's own name, and
-        // the header greeting name/school); and the school logo (best-effort — its
-        // own heavier endpoint, must never break the page).
+        // list (for this student's own name and the header greeting
+        // name/school); and the school logo (best-effort — its own heavier
+        // endpoint, must never break the page).
         const [financeData, childrenData, logo] = await Promise.all([
           getStudentFinance(studentId),
           getParentChildren(),
           getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
         ]);
-        
+
         setFinance(financeData);
-        setHasMultipleChildren(childrenData.students.length > 1);
         setGuardianName(childrenData.guardianName);
         setSchoolName(childrenData.schoolName);
         setSchoolLogo(logo.schoolLogo);
@@ -292,16 +288,6 @@ export default function ParentStudentFinance() {
     onRefresh: () => fetchFinanceData({ background: true }),
     isFetchingRef,
   });
-
-  async function handleLogout() {
-    try {
-      await parentLogout();
-    } catch {
-      // Ignore — still navigate to /login below regardless.
-    } finally {
-      navigate({ to: "/login" });
-    }
-  }
 
   // ---- Loading ----
   if (loading) {
@@ -397,10 +383,8 @@ export default function ParentStudentFinance() {
             </div>
             <div className="flex items-center gap-2">
               {/* Bell → the detailed recent-activity feed (Batch 10). Same chip
-                  as ParentChildren.tsx's header. This is the ONLY entry point
-                  for single-child guardians, who skip the ParentChildren list
-                  screen entirely and land straight here. No badge count —
-                  that would need an extra fetch this page doesn't make. */}
+                  as ParentChildren.tsx's header. No badge count — that would
+                  need an extra fetch this page doesn't make. */}
               <button
                 onClick={() => navigate({ to: "/parent-dashboard/activity" })}
                 aria-label="النشاط المالي"
@@ -409,75 +393,32 @@ export default function ParentStudentFinance() {
               >
                 <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
               </button>
-              {hasMultipleChildren ? (
-                <button
-                  onClick={() =>
-                    navigate({ to: "/parent-dashboard/children" })
-                  }
-                  className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
-                  style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                  رجوع
-                </button>
-              ) : (
-                // Single-child guardian skipped the list screen at login —
-                // there is nothing to "go back" to, so logout takes its place.
-                <button
-                  onClick={handleLogout}
-                  aria-label="تسجيل خروج"
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-                  style={{ backgroundColor: "#e8f0fc" }}
-                >
-                  <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
-                </button>
-              )}
+              {/* Every guardian now always has the children list to return to
+                  (no single-child skip anymore), so this is unconditionally a
+                  back button — never a logout-instead-of-back. */}
+              <button
+                onClick={() =>
+                  navigate({ to: "/parent-dashboard/children" })
+                }
+                className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
+                style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+              >
+                <ChevronRight className="w-4 h-4" />
+                رجوع
+              </button>
             </div>
           </div>
 
-          {/* Row 2: school logo + name, centered (both optional) */}
-          {(schoolLogo || schoolName) && (
-            <div className="flex flex-col items-center gap-2 mb-3">
-              {schoolLogo && (
-                <img
-                  src={schoolLogo}
-                  alt=""
-                  className="w-14 h-14 rounded-xl object-contain bg-white border"
-                  style={{ borderColor: "#e0e2e6" }}
-                />
-              )}
-              {schoolName && (
-                <p
-                  className="text-[15px] font-bold text-center"
-                  style={{ color: "#181d26" }}
-                >
-                  {schoolName}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Row 3: greeting + student name + section label, centered */}
-          <h1
-            className="text-[22px] font-medium text-center"
-            style={{ color: "#181d26" }}
-          >
-            أهلاً، {firstName(guardianName)}
-          </h1>
+          {/* Student name — directly below the top row, same alignment as the
+              time-of-day greeting (right, in RTL). */}
           {studentName && (
-            <p
-              className="mt-2 text-[15px] font-bold text-center"
+            <h1
+              className="text-[22px] font-medium text-right"
               style={{ color: "#1b61c9" }}
             >
               {studentName}
-            </p>
+            </h1>
           )}
-          <p
-            className="text-[13px] text-center mt-1"
-            style={{ color: "#6B7280" }}
-          >
-            الوضع المالي
-          </p>
         </div>
       </header>
 

@@ -15,16 +15,11 @@ export default function Login() {
   useEffect(() => {
     let cancelled = false;
     getParentChildren()
-      .then(({ students }) => {
+      .then(() => {
         if (cancelled) return;
-        if (students.length === 1) {
-          navigate({
-            to: "/parent-dashboard/children/$studentId/finance",
-            params: { studentId: students[0].id },
-          });
-        } else {
-          navigate({ to: "/parent-dashboard/children" });
-        }
+        // Every guardian — single- or multi-child — lands on the children
+        // list first; there is no direct-to-finance shortcut anymore.
+        navigate({ to: "/parent-dashboard/children" });
       })
       .catch(() => {
         if (!cancelled) {
@@ -70,15 +65,10 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { students } = await parentLogin(guardianNationalId, accessCode);
-      if (students.length === 1) {
-        navigate({
-          to: "/parent-dashboard/children/$studentId/finance",
-          params: { studentId: students[0].id },
-        });
-      } else {
-        navigate({ to: "/parent-dashboard/children" });
-      }
+      await parentLogin(guardianNationalId, accessCode);
+      // Every guardian lands on the children list first, regardless of how
+      // many children they have — no direct-to-finance shortcut.
+      navigate({ to: "/parent-dashboard/children" });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
