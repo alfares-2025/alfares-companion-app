@@ -350,8 +350,39 @@ export interface ParentChild {
   grade: string | null;
 }
 
+// POST /api/parent-portal/login and GET /api/parent-portal/students both
+// return the guardian's children plus the personalized-header fields:
+// `guardianName` (always a value — the backend falls back to the national id),
+// `schoolName` (nullable — a soft-deleted / missing school). The school LOGO
+// is deliberately NOT here (see getSchoolLogo).
 export interface ParentLoginResponse {
   students: ParentChild[];
+  guardianName: string;
+  schoolName: string | null;
+}
+
+export interface ParentChildrenResponse {
+  students: ParentChild[];
+  guardianName: string;
+  schoolName: string | null;
+}
+
+// GET /api/parent-portal/school-logo — its own endpoint because
+// schools.logo_inline is a base64 data URI that can run to a couple of MB.
+// `schoolLogo` is a ready-to-use <img src>: a `data:` URI in the common case,
+// otherwise an absolute URL (getSchoolLogo resolves server-relative paths).
+export interface SchoolLogoResponse {
+  schoolLogo: string | null;
+}
+
+// GET /api/parent-portal/finance-summary — aggregate totals across every one
+// of the guardian's children (backs the summary card above the children
+// list). `studentCount` is the guardian's total child count.
+export interface ParentFinanceSummary {
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+  studentCount: number;
 }
 
 export interface ParentFinanceAccount {
@@ -415,12 +446,35 @@ export async function parentLogin(
   });
 }
 
-export async function getParentChildren(): Promise<ParentChild[]> {
-  const res = await request<{ students: ParentChild[] }>(
-    "/api/parent-portal/students",
+export async function getParentChildren(): Promise<ParentChildrenResponse> {
+  return request<ParentChildrenResponse>("/api/parent-portal/students", {
+    method: "GET",
+  });
+}
+
+// The backend returns either a `data:` URI (schools.logo_inline, the common
+// case) or a server-relative `/api/logo/...` path; normalize the latter to an
+// absolute URL so a plain <img src> renders from the companion app's origin.
+// Returns { schoolLogo: null } gracefully for a school with no logo.
+export async function getSchoolLogo(): Promise<SchoolLogoResponse> {
+  const res = await request<SchoolLogoResponse>(
+    "/api/parent-portal/school-logo",
     { method: "GET" },
   );
-  return res.students;
+  const raw = res.schoolLogo;
+  if (!raw) return { schoolLogo: null };
+  const schoolLogo =
+    raw.startsWith("data:") || raw.startsWith("http")
+      ? raw
+      : `${API_BASE_URL}${raw.startsWith("/") ? "" : "/"}${raw}`;
+  return { schoolLogo };
+}
+
+export async function getFinanceSummary(): Promise<ParentFinanceSummary> {
+  return request<ParentFinanceSummary>(
+    "/api/parent-portal/finance-summary",
+    { method: "GET" },
+  );
 }
 
 export async function getStudentFinance(

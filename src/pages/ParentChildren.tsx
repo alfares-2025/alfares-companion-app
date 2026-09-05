@@ -2,18 +2,53 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   getParentChildren,
+  getSchoolLogo,
+  getFinanceSummary,
   parentLogout,
   ApiError,
   type ParentChild,
+  type ParentFinanceSummary,
 } from "@/lib/api";
-import { Loader2, AlertCircle, Users, LogOut, ChevronLeft, X } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  Users,
+  LogOut,
+  ChevronLeft,
+  X,
+  Sun,
+  Moon,
+} from "lucide-react";
 
 /**
  * Parent Portal — children list (multi-child guardians land here after
  * login; single-child guardians skip straight to the finance detail).
- * Real design tokens throughout (new work, not an edit to legacy Login.tsx)
- * — matches PartnerDashboard.tsx/Notifications.tsx's token convention.
+ *
+ * Visual language copy-adapted from PartnerDashboard.tsx (time-of-day
+ * greeting, school-branding header, semantic tints, rounded section cards) —
+ * nothing in that file is exported, so the patterns are replicated here.
  */
+
+/** Time-of-day greeting, same buckets as PartnerDashboard.tsx. */
+function computeGreeting(): { text: string; isNight: boolean } {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return { text: "صباح الخير", isNight: false };
+  if (hour >= 12 && hour < 18) return { text: "مساء الخير", isNight: false };
+  return { text: "مساء الخير", isNight: true };
+}
+
+/** First token of the guardian's name for the "أهلاً، …" heading. */
+function firstName(name: string): string {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return "ولي الأمر";
+  return trimmed.split(/\s+/)[0];
+}
+
+/** Local copy of PartnerDashboard.tsx's currency formatter (not exported there). */
+function formatCurrency(value: number): string {
+  return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
+}
+
 export default function ParentChildren() {
   const navigate = useNavigate();
   // Untyped/loose read — no validateSearch is registered on this route, so
@@ -23,16 +58,38 @@ export default function ParentChildren() {
   const search = useSearch({ strict: false }) as { error?: string };
 
   const [children, setChildren] = useState<ParentChild[]>([]);
+  const [guardianName, setGuardianName] = useState("");
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
+  const [financeSummary, setFinanceSummary] =
+    useState<ParentFinanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(
     search?.error ?? null,
   );
 
+  const [greeting, setGreeting] = useState(computeGreeting);
   useEffect(() => {
-    getParentChildren()
-      .then((data) => {
-        setChildren(data);
+    const id = setInterval(() => setGreeting(computeGreeting()), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      getParentChildren(),
+      // Best-effort: both are their own (heavier) endpoints and a failure in
+      // either must never blank the page — getParentChildren still carries
+      // any real 401 to the catch below.
+      getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
+      getFinanceSummary().catch(() => null as ParentFinanceSummary | null),
+    ])
+      .then(([data, logo, summary]) => {
+        setChildren(data.students);
+        setGuardianName(data.guardianName);
+        setSchoolName(data.schoolName);
+        setSchoolLogo(logo.schoolLogo);
+        setFinanceSummary(summary);
         setLoading(false);
       })
       .catch((err) => {
@@ -60,21 +117,82 @@ export default function ParentChildren() {
     }
   }
 
+  if (loading) {
+    return (
+      <div
+        dir="rtl"
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "#F8FAFC" }}
+      >
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1b61c9" }} />
+      </div>
+    );
+  }
+
   return (
     <div dir="rtl" className="min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
       <header className="px-4 pt-6 pb-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <h1 className="text-[20px] font-bold" style={{ color: "#181d26" }}>
-            أبنائي
+        <div className="max-w-2xl mx-auto">
+          {/* Row 1: greeting (right) + logout chip (left) */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "#6B7280" }}
+              >
+                {greeting.text}
+              </span>
+              {greeting.isNight ? (
+                <Moon className="w-4 h-4" style={{ color: "#6B7280" }} />
+              ) : (
+                <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
+              )}
+            </div>
+            <button
+              onClick={handleLogout}
+              aria-label="تسجيل خروج"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+              style={{ backgroundColor: "#e8f0fc" }}
+            >
+              <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+            </button>
+          </div>
+
+          {/* Row 2: school logo + name, centered (both optional) */}
+          {(schoolLogo || schoolName) && (
+            <div className="flex flex-col items-center gap-2 mb-3">
+              {schoolLogo && (
+                <img
+                  src={schoolLogo}
+                  alt=""
+                  className="w-14 h-14 rounded-xl object-contain bg-white border"
+                  style={{ borderColor: "#e0e2e6" }}
+                />
+              )}
+              {schoolName && (
+                <p
+                  className="text-[15px] font-bold text-center"
+                  style={{ color: "#181d26" }}
+                >
+                  {schoolName}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Row 3: greeting heading + subtitle, centered */}
+          <h1
+            className="text-[22px] font-medium text-center"
+            style={{ color: "#181d26" }}
+          >
+            أهلاً، {firstName(guardianName)}
           </h1>
-          <button
-            onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 text-sm font-medium transition hover:opacity-80"
+          <p
+            className="text-[13px] text-center mt-1"
             style={{ color: "#6B7280" }}
           >
-            <LogOut className="w-4 h-4" />
-            تسجيل خروج
-          </button>
+            تابع الوضع المالي لأبنائك أولاً بأول.
+          </p>
         </div>
       </header>
 
@@ -97,64 +215,174 @@ export default function ParentChildren() {
           </div>
         )}
 
-        {loading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1b61c9" }} />
+        {/* Summary hero — aggregate totals across all the guardian's children,
+            shown before any single child is opened. Accent-tinted like
+            PartnerDashboard.tsx's hero card. */}
+        {!error && children.length > 0 && financeSummary && (
+          <div
+            className="rounded-[18px] p-5"
+            style={{ backgroundColor: "#e8f0fc" }}
+          >
+            <div className="flex items-stretch gap-3 mb-3">
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[11px] font-medium mb-1"
+                  style={{ color: "#4B5563" }}
+                >
+                  إجمالي الرسوم
+                </p>
+                <p
+                  className="text-[18px] font-bold leading-tight break-words"
+                  style={{ color: "#0C447C" }}
+                >
+                  {formatCurrency(financeSummary.totalDue)}
+                </p>
+              </div>
+              <div
+                className="w-px self-stretch flex-shrink-0"
+                style={{ backgroundColor: "#c5d8f0" }}
+              />
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[11px] font-medium mb-1"
+                  style={{ color: "#4B5563" }}
+                >
+                  إجمالي المدفوع
+                </p>
+                <p
+                  className="text-[18px] font-bold leading-tight break-words"
+                  style={{ color: "#1b61c9" }}
+                >
+                  {formatCurrency(financeSummary.totalPaid)}
+                </p>
+              </div>
+            </div>
+
+            {financeSummary.totalDue > 0 && (
+              <div
+                className="h-1.5 rounded-full overflow-hidden mb-2"
+                style={{ backgroundColor: "rgba(255,255,255,0.6)" }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.max(
+                        0,
+                        Math.round(
+                          (financeSummary.totalPaid / financeSummary.totalDue) *
+                            100,
+                        ),
+                      ),
+                    )}%`,
+                    backgroundColor: "#1b61c9",
+                  }}
+                />
+              </div>
+            )}
+
+            <p className="text-[11px] font-medium" style={{ color: "#4B5563" }}>
+              لـ{financeSummary.studentCount} أبناء
+            </p>
           </div>
         )}
 
-        {!loading && error && (
+        {error && (
           <div
             className="bg-white rounded-[18px] border px-6 py-8 text-center"
             style={{ borderColor: "#e0e2e6" }}
           >
-            <AlertCircle className="w-10 h-10 mx-auto mb-3" style={{ color: "#A32D2D" }} />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              style={{ backgroundColor: "#FCEBEB" }}
+            >
+              <AlertCircle className="w-6 h-6" style={{ color: "#A32D2D" }} />
+            </div>
             <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
               {error}
             </p>
           </div>
         )}
 
-        {!loading && !error && children.length === 0 && (
+        {!error && children.length === 0 && (
           <div
             className="bg-white rounded-[18px] border px-6 py-10 text-center"
             style={{ borderColor: "#e0e2e6" }}
           >
-            <Users className="w-10 h-10 mx-auto mb-3" style={{ color: "#e0e2e6" }} />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              style={{ backgroundColor: "#F8FAFC" }}
+            >
+              <Users className="w-6 h-6" style={{ color: "#94a3b8" }} />
+            </div>
             <p className="text-sm" style={{ color: "#6B7280" }}>
               لا يوجد أبناء مسجّلون
             </p>
           </div>
         )}
 
-        {!loading && !error && children.length > 0 && (
-          <div className="space-y-2">
-            {children.map((child) => (
-              <button
-                key={child.id}
-                onClick={() =>
-                  navigate({
-                    to: "/parent-dashboard/children/$studentId/finance",
-                    params: { studentId: child.id },
-                  })
-                }
-                className="w-full bg-white rounded-[14px] border p-4 flex items-center justify-between gap-3 text-right transition hover:shadow-md"
-                style={{ borderColor: "#e0e2e6" }}
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold truncate" style={{ color: "#181d26" }}>
-                    {child.name}
-                  </p>
-                  {child.grade && (
-                    <p className="text-[13px] mt-0.5" style={{ color: "#6B7280" }}>
-                      {child.grade}
+        {!error && children.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 px-1">
+              <Users
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#1b61c9" }}
+              />
+              <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
+                الأبناء
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {children.map((child) => (
+                <div
+                  key={child.id}
+                  className="w-full bg-white rounded-[14px] border p-4 flex items-center gap-3 text-right transition hover:border-slate-300"
+                  style={{ borderColor: "#e0e2e6" }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 text-sm font-bold"
+                    style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                  >
+                    {child.name.trim().charAt(0) || "؟"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="font-semibold truncate"
+                      style={{ color: "#181d26" }}
+                    >
+                      {child.name}
                     </p>
-                  )}
+                    {child.grade && (
+                      <p
+                        className="text-[13px] mt-0.5"
+                        style={{ color: "#6B7280" }}
+                      >
+                        {child.grade}
+                      </p>
+                    )}
+                  </div>
+                  {/* The only clickable element on the row — soft accent chip,
+                      bound to THIS child's id. */}
+                  <button
+                    onClick={() =>
+                      navigate({
+                        to: "/parent-dashboard/children/$studentId/finance",
+                        params: { studentId: child.id },
+                      })
+                    }
+                    aria-label={`تفاصيل ${child.name}`}
+                    className="inline-flex items-center gap-1 rounded-lg h-8 px-3 text-[13px] font-bold flex-shrink-0 transition hover:opacity-80"
+                    style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                  >
+                    تفاصيل
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
                 </div>
-                <ChevronLeft className="w-5 h-5 flex-shrink-0" style={{ color: "#6B7280" }} />
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>

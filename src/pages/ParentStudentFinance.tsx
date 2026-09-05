@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   getStudentFinance,
   getParentChildren,
+  getSchoolLogo,
   parentLogout,
   ApiError,
   type ParentStudentFinance as ParentStudentFinanceData,
@@ -13,13 +15,15 @@ import {
   ChevronRight,
   LogOut,
   Wallet,
+  CircleDollarSign,
   Receipt,
   History,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 // Local copies of PartnerDashboard.tsx's formatting helpers — that file
-// doesn't export them, and this file must not be modified, so they're
-// adapted here rather than imported.
+// doesn't export them, so they're replicated here rather than imported.
 function formatCurrency(value: number): string {
   return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
 }
@@ -37,6 +41,21 @@ function formatDate(value: string | null): string {
   }
 }
 
+/** Time-of-day greeting, same buckets as PartnerDashboard.tsx. */
+function computeGreeting(): { text: string; isNight: boolean } {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return { text: "صباح الخير", isNight: false };
+  if (hour >= 12 && hour < 18) return { text: "مساء الخير", isNight: false };
+  return { text: "مساء الخير", isNight: true };
+}
+
+/** First token of the guardian's name for the "أهلاً، …" heading. */
+function firstName(name: string): string {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return "ولي الأمر";
+  return trimmed.split(/\s+/)[0];
+}
+
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: "نقدي",
   check: "شيك",
@@ -45,13 +64,54 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: "بطاقة",
 };
 
+/** MetricCard — copy-adapted from PartnerDashboard.tsx (lines ~144-177). */
+function MetricCard({
+  icon,
+  label,
+  value,
+  valueColor,
+  iconBg,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  valueColor?: string;
+  iconBg: string;
+}) {
+  return (
+    <div
+      className="bg-white rounded-2xl border p-4 flex flex-col gap-3 transition hover:shadow-md"
+      style={{ borderColor: "#e0e2e6" }}
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
+          style={{ backgroundColor: iconBg }}
+        >
+          {icon}
+        </div>
+        <span className="text-[13px] font-medium" style={{ color: "#6B7280" }}>
+          {label}
+        </span>
+      </div>
+      <p
+        className="text-[18px] font-bold leading-tight break-words"
+        style={{ color: valueColor ?? "#181d26" }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Parent Portal — one student's read-only finance summary
  * (GET /api/parent-portal/students/:studentId/finance, Batch 3).
  *
- * Visual reference: PartnerDashboard.tsx's MetricCard/stat-row/grouped-card
- * patterns and semantic color tokens, adapted (not imported — that file is
- * untouched and doesn't export them).
+ * Visual language copy-adapted from PartnerDashboard.tsx: the branded/greeting
+ * header, the hero collection-ring (lines ~626-689), MetricCard stat cells
+ * and grouped section cards. Behaviour (routing, fetching, 401/403 handling)
+ * is unchanged.
  */
 export default function ParentStudentFinance() {
   const navigate = useNavigate();
@@ -66,8 +126,18 @@ export default function ParentStudentFinance() {
     null,
   );
   const [hasMultipleChildren, setHasMultipleChildren] = useState(false);
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const [guardianName, setGuardianName] = useState("");
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [greeting, setGreeting] = useState(computeGreeting);
+  useEffect(() => {
+    const id = setInterval(() => setGreeting(computeGreeting()), 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!studentId) {
@@ -77,15 +147,26 @@ export default function ParentStudentFinance() {
 
     let cancelled = false;
 
-    // Fetched together: the finance data itself, plus the guardian's full
-    // child list purely to decide whether "back" (>1 child) or "تسجيل خروج"
-    // (exactly 1 child, meaning this guardian skipped the list screen
-    // entirely at login) belongs in the header.
-    Promise.all([getStudentFinance(studentId), getParentChildren()])
-      .then(([financeData, children]) => {
+    // Fetched together: the finance data itself; the guardian's full child
+    // list (for the >1-child back/logout switch, this student's own name, and
+    // the header greeting name/school); and the school logo (best-effort — its
+    // own heavier endpoint, must never break the page).
+    Promise.all([
+      getStudentFinance(studentId),
+      getParentChildren(),
+      getSchoolLogo().catch(() => ({ schoolLogo: null as string | null })),
+    ])
+      .then(([financeData, childrenData, logo]) => {
         if (cancelled) return;
         setFinance(financeData);
-        setHasMultipleChildren(children.length > 1);
+        setHasMultipleChildren(childrenData.students.length > 1);
+        setGuardianName(childrenData.guardianName);
+        setSchoolName(childrenData.schoolName);
+        setSchoolLogo(logo.schoolLogo);
+        const match = childrenData.students.find(
+          (c) => String(c.id) === String(studentId),
+        );
+        setStudentName(match?.name ?? null);
         setLoading(false);
       })
       .catch((err) => {
@@ -156,7 +237,12 @@ export default function ParentStudentFinance() {
           className="bg-white rounded-[18px] border px-6 py-8 text-center max-w-sm w-full"
           style={{ borderColor: "#e0e2e6" }}
         >
-          <AlertCircle className="w-10 h-10 mx-auto mb-3" style={{ color: "#A32D2D" }} />
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+            style={{ backgroundColor: "#FCEBEB" }}
+          >
+            <AlertCircle className="w-6 h-6" style={{ color: "#A32D2D" }} />
+          </div>
           <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
             {error}
           </p>
@@ -169,34 +255,104 @@ export default function ParentStudentFinance() {
 
   const { account, feeItems, payments, academicPeriodId } = finance;
 
+  // Paid-vs-due ratio for the hero ring. No `collection_rate` on the parent
+  // finance payload, so derive it; clamp for the overpaid / zero-due cases.
+  const paidPct =
+    account && account.totalDue > 0
+      ? Math.min(
+          100,
+          Math.max(0, Math.round((account.totalPaid / account.totalDue) * 100)),
+        )
+      : 0;
+  const RING_C = 2 * Math.PI * 36;
+
   return (
     <div dir="rtl" className="min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
       <header className="px-4 pt-6 pb-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          {hasMultipleChildren ? (
-            <button
-              onClick={() => navigate({ to: "/parent-dashboard/children" })}
-              className="inline-flex items-center gap-1.5 text-sm font-medium transition hover:opacity-80"
-              style={{ color: "#6B7280" }}
-            >
-              <ChevronRight className="w-4 h-4" />
-              الأبناء
-            </button>
-          ) : (
-            // Single-child guardian skipped the list screen at login — there
-            // is nothing to "go back" to, so logout takes its place here.
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 text-sm font-medium transition hover:opacity-80"
-              style={{ color: "#6B7280" }}
-            >
-              <LogOut className="w-4 h-4" />
-              تسجيل خروج
-            </button>
+        <div className="max-w-2xl mx-auto">
+          {/* Row 1: greeting (right) + back / logout (left) */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "#6B7280" }}
+              >
+                {greeting.text}
+              </span>
+              {greeting.isNight ? (
+                <Moon className="w-4 h-4" style={{ color: "#6B7280" }} />
+              ) : (
+                <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
+              )}
+            </div>
+            {hasMultipleChildren ? (
+              <button
+                onClick={() =>
+                  navigate({ to: "/parent-dashboard/children" })
+                }
+                className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
+                style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+              >
+                <ChevronRight className="w-4 h-4" />
+                الأبناء
+              </button>
+            ) : (
+              // Single-child guardian skipped the list screen at login — there
+              // is nothing to "go back" to, so logout takes its place here.
+              <button
+                onClick={handleLogout}
+                aria-label="تسجيل خروج"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
+                style={{ backgroundColor: "#e8f0fc" }}
+              >
+                <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+              </button>
+            )}
+          </div>
+
+          {/* Row 2: school logo + name, centered (both optional) */}
+          {(schoolLogo || schoolName) && (
+            <div className="flex flex-col items-center gap-2 mb-3">
+              {schoolLogo && (
+                <img
+                  src={schoolLogo}
+                  alt=""
+                  className="w-14 h-14 rounded-xl object-contain bg-white border"
+                  style={{ borderColor: "#e0e2e6" }}
+                />
+              )}
+              {schoolName && (
+                <p
+                  className="text-[15px] font-bold text-center"
+                  style={{ color: "#181d26" }}
+                >
+                  {schoolName}
+                </p>
+              )}
+            </div>
           )}
-          <h1 className="text-[16px] font-bold" style={{ color: "#181d26" }}>
-            الوضع المالي
+
+          {/* Row 3: greeting + student name + section label, centered */}
+          <h1
+            className="text-[22px] font-medium text-center"
+            style={{ color: "#181d26" }}
+          >
+            أهلاً، {firstName(guardianName)}
           </h1>
+          {studentName && (
+            <p
+              className="mt-2 text-[15px] font-bold text-center"
+              style={{ color: "#1b61c9" }}
+            >
+              {studentName}
+            </p>
+          )}
+          <p
+            className="text-[13px] text-center mt-1"
+            style={{ color: "#6B7280" }}
+          >
+            الوضع المالي
+          </p>
         </div>
       </header>
 
@@ -206,7 +362,12 @@ export default function ParentStudentFinance() {
             className="bg-white rounded-[18px] border px-6 py-10 text-center"
             style={{ borderColor: "#e0e2e6" }}
           >
-            <Wallet className="w-10 h-10 mx-auto mb-3" style={{ color: "#e0e2e6" }} />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              style={{ backgroundColor: "#F8FAFC" }}
+            >
+              <Wallet className="w-6 h-6" style={{ color: "#94a3b8" }} />
+            </div>
             <p className="text-sm" style={{ color: "#6B7280" }}>
               لا توجد فترة أكاديمية حالية
             </p>
@@ -216,53 +377,112 @@ export default function ParentStudentFinance() {
             className="bg-white rounded-[18px] border px-6 py-10 text-center"
             style={{ borderColor: "#e0e2e6" }}
           >
-            <Wallet className="w-10 h-10 mx-auto mb-3" style={{ color: "#e0e2e6" }} />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              style={{ backgroundColor: "#F8FAFC" }}
+            >
+              <Wallet className="w-6 h-6" style={{ color: "#94a3b8" }} />
+            </div>
             <p className="text-sm" style={{ color: "#6B7280" }}>
               لا يوجد حساب رسوم بعد
             </p>
           </div>
         ) : (
           <>
-            {/* Stat cards — collected (accent) / remaining (amber), same
-                tint language as PartnerDashboard.tsx's totals row. */}
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className="rounded-[14px] border p-3 flex flex-col gap-1"
-                style={{ backgroundColor: "#e8f0fc", borderColor: "#c5d8f0" }}
-              >
-                <span className="text-[11px] font-medium" style={{ color: "#4B5563" }}>
-                  إجمالي المدفوع
-                </span>
-                <p className="text-[16px] font-bold leading-tight" style={{ color: "#1b61c9" }}>
-                  {formatCurrency(account.totalPaid)}
-                </p>
-              </div>
-              <div
-                className="rounded-[14px] border p-3 flex flex-col gap-1"
-                style={{ backgroundColor: "#FAEEDA", borderColor: "#EAD8B0" }}
-              >
-                <span className="text-[11px] font-medium" style={{ color: "#4B5563" }}>
-                  المتبقي
-                </span>
-                <p
-                  className="text-[16px] font-bold leading-tight"
-                  style={{ color: account.balance > 0 ? "#BA7517" : "#181d26" }}
-                >
-                  {formatCurrency(account.balance)}
-                </p>
+            {/* Hero — paid-vs-due ring + total due. Direct adaptation of
+                PartnerDashboard.tsx's collection-rate ring (lines ~626-689). */}
+            <div
+              className="rounded-[20px] p-6"
+              style={{ backgroundColor: "#e8f0fc" }}
+            >
+              <div className="flex items-center gap-6">
+                <div className="relative w-[92px] h-[92px] flex-shrink-0">
+                  <svg
+                    width="92"
+                    height="92"
+                    viewBox="0 0 92 92"
+                    className="transform -rotate-90"
+                  >
+                    <defs>
+                      <linearGradient
+                        id="parentFinanceRing"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="0%"
+                      >
+                        <stop offset="0%" stopColor="#639922" />
+                        <stop offset="100%" stopColor="#1b61c9" />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="46"
+                      cy="46"
+                      r="36"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.5)"
+                      strokeWidth="10"
+                    />
+                    <circle
+                      cx="46"
+                      cy="46"
+                      r="36"
+                      fill="none"
+                      stroke="url(#parentFinanceRing)"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(paidPct / 100) * RING_C} ${RING_C}`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span
+                      className="text-xl font-bold"
+                      style={{ color: "#0C447C" }}
+                    >
+                      {paidPct}%
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <p className="text-xs mb-1" style={{ color: "#6B7280" }}>
+                      إجمالي المستحق
+                    </p>
+                    <p
+                      className="text-2xl font-bold"
+                      style={{ color: "#0C447C" }}
+                    >
+                      {formatCurrency(account.totalDue)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div
-              className="rounded-[14px] border p-3 flex items-center justify-between gap-2"
-              style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
-            >
-              <span className="text-[12px] font-semibold" style={{ color: "#4B5563" }}>
-                إجمالي المستحق
-              </span>
-              <span className="text-[14px] font-bold" style={{ color: "#181d26" }}>
-                {formatCurrency(account.totalDue)}
-              </span>
+            {/* Paid / remaining — MetricCard treatment, semantic tints kept
+                (accent for paid, amber for remaining). */}
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard
+                iconBg="#e8f0fc"
+                icon={
+                  <Wallet className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                }
+                label="إجمالي المدفوع"
+                value={formatCurrency(account.totalPaid)}
+                valueColor="#1b61c9"
+              />
+              <MetricCard
+                iconBg="#FAEEDA"
+                icon={
+                  <CircleDollarSign
+                    className="w-4 h-4"
+                    style={{ color: "#BA7517" }}
+                  />
+                }
+                label="المتبقي"
+                value={formatCurrency(account.balance)}
+                valueColor={account.balance > 0 ? "#BA7517" : "#181d26"}
+              />
             </div>
 
             {account.className && (
@@ -270,25 +490,41 @@ export default function ParentStudentFinance() {
                 className="rounded-[14px] border p-3 flex items-center justify-between gap-2"
                 style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
               >
-                <span className="text-[12px] font-semibold" style={{ color: "#4B5563" }}>
+                <span
+                  className="text-[12px] font-semibold"
+                  style={{ color: "#4B5563" }}
+                >
                   الصف
                 </span>
-                <span className="text-[14px] font-bold" style={{ color: "#181d26" }}>
+                <span
+                  className="text-[14px] font-bold"
+                  style={{ color: "#181d26" }}
+                >
                   {account.className}
                 </span>
               </div>
             )}
 
             {/* Fee items */}
-            <div className="bg-white rounded-[18px] border p-5" style={{ borderColor: "#e0e2e6" }}>
+            <div
+              className="bg-white rounded-[18px] border p-5"
+              style={{ borderColor: "#e0e2e6" }}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <Receipt className="w-4 h-4" strokeWidth={2.2} style={{ color: "#1b61c9" }} />
+                <Receipt
+                  className="w-4 h-4"
+                  strokeWidth={2.2}
+                  style={{ color: "#1b61c9" }}
+                />
                 <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
                   بنود الرسوم
                 </h2>
               </div>
               {feeItems.length === 0 ? (
-                <p className="text-sm text-center py-6" style={{ color: "#6B7280" }}>
+                <p
+                  className="text-sm text-center py-6"
+                  style={{ color: "#6B7280" }}
+                >
                   لا توجد بنود رسوم
                 </p>
               ) : (
@@ -298,7 +534,10 @@ export default function ParentStudentFinance() {
                       key={item.id}
                       className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
                     >
-                      <span className="text-sm font-medium truncate" style={{ color: "#181d26" }}>
+                      <span
+                        className="text-sm font-medium truncate"
+                        style={{ color: "#181d26" }}
+                      >
                         {item.itemName ?? item.itemType ?? "—"}
                       </span>
                       <span
@@ -314,15 +553,25 @@ export default function ParentStudentFinance() {
             </div>
 
             {/* Payment history */}
-            <div className="bg-white rounded-[18px] border p-5" style={{ borderColor: "#e0e2e6" }}>
+            <div
+              className="bg-white rounded-[18px] border p-5"
+              style={{ borderColor: "#e0e2e6" }}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <History className="w-4 h-4" strokeWidth={2.2} style={{ color: "#1b61c9" }} />
+                <History
+                  className="w-4 h-4"
+                  strokeWidth={2.2}
+                  style={{ color: "#1b61c9" }}
+                />
                 <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
                   سجل الدفعات
                 </h2>
               </div>
               {payments.length === 0 ? (
-                <p className="text-sm text-center py-6" style={{ color: "#6B7280" }}>
+                <p
+                  className="text-sm text-center py-6"
+                  style={{ color: "#6B7280" }}
+                >
                   لا توجد دفعات بعد
                 </p>
               ) : (
@@ -333,17 +582,27 @@ export default function ParentStudentFinance() {
                       className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: "#181d26" }}>
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: "#181d26" }}
+                        >
                           {formatDate(p.paymentDate)}
                         </p>
                         {p.paymentMethod && (
-                          <p className="text-[12px] mt-0.5" style={{ color: "#6B7280" }}>
-                            {PAYMENT_METHOD_LABELS[p.paymentMethod.toLowerCase()] ??
-                              p.paymentMethod}
+                          <p
+                            className="text-[12px] mt-0.5"
+                            style={{ color: "#6B7280" }}
+                          >
+                            {PAYMENT_METHOD_LABELS[
+                              p.paymentMethod.toLowerCase()
+                            ] ?? p.paymentMethod}
                           </p>
                         )}
                       </div>
-                      <span className="text-sm font-bold flex-shrink-0" style={{ color: "#4F7A1F" }}>
+                      <span
+                        className="text-sm font-bold flex-shrink-0"
+                        style={{ color: "#4F7A1F" }}
+                      >
                         {formatCurrency(p.amount)}
                       </span>
                     </div>
