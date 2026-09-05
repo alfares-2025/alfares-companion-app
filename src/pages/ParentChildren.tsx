@@ -18,12 +18,12 @@ import {
   AlertCircle,
   Users,
   LogOut,
-  ChevronLeft,
   X,
   Sun,
   Moon,
   Bell,
   Star,
+  ChevronLeft,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
@@ -477,12 +477,26 @@ export default function ParentChildren() {
                     {child.name.trim().charAt(0) || "؟"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p
-                      className="font-semibold truncate"
-                      style={{ color: "#181d26" }}
+                    {/* The student's name IS the clickable element (replaces
+                        the former "تفاصيل" chip) — bound to THIS child's id,
+                        same navigation call. The chevron is a permanent,
+                        always-visible cue that the name leads somewhere (hover
+                        never fires on touch); active: gives immediate press
+                        feedback, hover: is kept for desktop/web. */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate({
+                          to: "/parent-dashboard/children/$studentId/finance",
+                          params: { studentId: child.id },
+                        })
+                      }
+                      aria-label={`تفاصيل ${child.name}`}
+                      className="flex items-center gap-1 max-w-full font-semibold cursor-pointer transition-colors text-[#1b61c9] hover:text-[#1553a3] active:text-[#1553a3]"
                     >
-                      {child.name}
-                    </p>
+                      <span className="truncate">{child.name}</span>
+                      <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                    </button>
                     {child.grade && (
                       <p
                         className="text-[13px] mt-0.5"
@@ -492,22 +506,6 @@ export default function ParentChildren() {
                       </p>
                     )}
                   </div>
-                  {/* The only clickable element on the row — soft accent chip,
-                      bound to THIS child's id. */}
-                  <button
-                    onClick={() =>
-                      navigate({
-                        to: "/parent-dashboard/children/$studentId/finance",
-                        params: { studentId: child.id },
-                      })
-                    }
-                    aria-label={`تفاصيل ${child.name}`}
-                    className="inline-flex items-center gap-1 rounded-lg h-8 px-3 text-[13px] font-bold flex-shrink-0 transition hover:opacity-80"
-                    style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-                  >
-                    تفاصيل
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
                 </div>
               ))}
             </div>
