@@ -180,6 +180,9 @@ export default function ParentStudentFinance() {
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"installments" | "payments">(
+    "installments",
+  );
 
   const [greeting, setGreeting] = useState(computeGreeting);
   useEffect(() => {
@@ -606,188 +609,220 @@ export default function ParentStudentFinance() {
               )}
             </div>
 
-            {/* Installments */}
+            {/* Installments & Payment History Tabs */}
             <div
               className="bg-white rounded-[18px] border p-5"
               style={{ borderColor: "#e0e2e6" }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar
-                  className="w-4 h-4"
-                  strokeWidth={2.2}
-                  style={{ color: "#1b61c9" }}
-                />
-                <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                  الأقساط
-                </h2>
-              </div>
-              {installments.length === 0 ? (
-                <p
-                  className="text-sm text-center py-6"
-                  style={{ color: "#6B7280" }}
+              {/* Tabs Switcher */}
+              <div
+                className="flex items-center p-1 rounded-xl mb-4"
+                style={{ backgroundColor: "#F1F5F9" }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("installments")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                    activeTab === "installments"
+                      ? "bg-white shadow-sm"
+                      : "hover:text-[#181d26]"
+                  }`}
+                  style={{
+                    color:
+                      activeTab === "installments" ? "#1b61c9" : "#6B7280",
+                  }}
                 >
-                  لا توجد أقساط مسجلة
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {installments.map((inst, index) => {
-                    const statusConfig = getInstallmentStatus(inst.status);
-                    const instNumber =
-                      inst.installmentNo != null ? inst.installmentNo : index + 1;
-                    return (
-                      <div
-                        key={`${inst.installmentNo ?? index}-${index}`}
-                        className="rounded-[14px] border p-3.5 space-y-2.5"
-                        style={{
-                          backgroundColor: "#F8FAFC",
-                          borderColor: "#e0e2e6",
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className="text-sm font-bold"
-                            style={{ color: "#181d26" }}
-                          >
-                            رقم القسط: {instNumber}
-                          </span>
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                            style={{
-                              backgroundColor: statusConfig.bg,
-                              color: statusConfig.text,
-                              borderColor: statusConfig.border,
-                            }}
-                          >
-                            {statusConfig.label}
-                          </span>
-                        </div>
+                  <Calendar
+                    className="w-4 h-4"
+                    strokeWidth={2.2}
+                    style={{
+                      color:
+                        activeTab === "installments" ? "#1b61c9" : "#6B7280",
+                    }}
+                  />
+                  <span>الأقساط</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("payments")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                    activeTab === "payments"
+                      ? "bg-white shadow-sm"
+                      : "hover:text-[#181d26]"
+                  }`}
+                  style={{
+                    color: activeTab === "payments" ? "#1b61c9" : "#6B7280",
+                  }}
+                >
+                  <History
+                    className="w-4 h-4"
+                    strokeWidth={2.2}
+                    style={{
+                      color:
+                        activeTab === "payments" ? "#1b61c9" : "#6B7280",
+                    }}
+                  />
+                  <span>سجل الدفعات</span>
+                </button>
+              </div>
 
-                        <div className="flex items-center justify-between text-[12px]">
-                          <span style={{ color: "#6B7280" }}>تاريخ الاستحقاق</span>
-                          <span
-                            className="font-medium"
-                            style={{ color: "#181d26" }}
-                          >
-                            {formatDate(inst.dueDate)}
-                          </span>
-                        </div>
-
+              {/* Tab Content: Installments */}
+              {activeTab === "installments" && (
+                installments.length === 0 ? (
+                  <p
+                    className="text-sm text-center py-6"
+                    style={{ color: "#6B7280" }}
+                  >
+                    لا توجد أقساط مسجلة
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {installments.map((inst, index) => {
+                      const statusConfig = getInstallmentStatus(inst.status);
+                      const instNumber =
+                        inst.installmentNo != null ? inst.installmentNo : index + 1;
+                      return (
                         <div
-                          className="grid grid-cols-3 gap-2 pt-2 border-t text-right"
-                          style={{ borderColor: "#e0e2e6" }}
+                          key={`${inst.installmentNo ?? index}-${index}`}
+                          className="rounded-[14px] border p-3.5 space-y-2.5"
+                          style={{
+                            backgroundColor: "#F8FAFC",
+                            borderColor: "#e0e2e6",
+                          }}
                         >
-                          <div>
-                            <p
-                              className="text-[11px] mb-0.5"
-                              style={{ color: "#6B7280" }}
-                            >
-                              المبلغ المستحق
-                            </p>
-                            <p
-                              className="text-[13px] font-bold"
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className="text-sm font-bold"
                               style={{ color: "#181d26" }}
                             >
-                              {formatCurrency(inst.amountDue)}
-                            </p>
-                          </div>
-                          <div>
-                            <p
-                              className="text-[11px] mb-0.5"
-                              style={{ color: "#6B7280" }}
-                            >
-                              المدفوع
-                            </p>
-                            <p
-                              className="text-[13px] font-bold"
+                              رقم القسط: {instNumber}
+                            </span>
+                            <span
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
                               style={{
-                                color:
-                                  inst.amountPaid > 0 ? "#4F7A1F" : "#181d26",
+                                backgroundColor: statusConfig.bg,
+                                color: statusConfig.text,
+                                borderColor: statusConfig.border,
                               }}
                             >
-                              {formatCurrency(inst.amountPaid)}
-                            </p>
+                              {statusConfig.label}
+                            </span>
                           </div>
-                          <div>
-                            <p
-                              className="text-[11px] mb-0.5"
-                              style={{ color: "#6B7280" }}
+
+                          <div className="flex items-center justify-between text-[12px]">
+                            <span style={{ color: "#6B7280" }}>تاريخ الاستحقاق</span>
+                            <span
+                              className="font-medium"
+                              style={{ color: "#181d26" }}
                             >
-                              المتبقي
-                            </p>
-                            <p
-                              className="text-[13px] font-bold"
-                              style={{
-                                color:
-                                  inst.balance > 0 ? "#BA7517" : "#181d26",
-                              }}
-                            >
-                              {formatCurrency(inst.balance)}
-                            </p>
+                              {formatDate(inst.dueDate)}
+                            </span>
+                          </div>
+
+                          <div
+                            className="grid grid-cols-3 gap-2 pt-2 border-t text-right"
+                            style={{ borderColor: "#e0e2e6" }}
+                          >
+                            <div>
+                              <p
+                                className="text-[11px] mb-0.5"
+                                style={{ color: "#6B7280" }}
+                              >
+                                المبلغ المستحق
+                              </p>
+                              <p
+                                className="text-[13px] font-bold"
+                                style={{ color: "#181d26" }}
+                              >
+                                {formatCurrency(inst.amountDue)}
+                              </p>
+                            </div>
+                            <div>
+                              <p
+                                className="text-[11px] mb-0.5"
+                                style={{ color: "#6B7280" }}
+                              >
+                                المدفوع
+                              </p>
+                              <p
+                                className="text-[13px] font-bold"
+                                style={{
+                                  color:
+                                    inst.amountPaid > 0 ? "#4F7A1F" : "#181d26",
+                                }}
+                              >
+                                {formatCurrency(inst.amountPaid)}
+                              </p>
+                            </div>
+                            <div>
+                              <p
+                                className="text-[11px] mb-0.5"
+                                style={{ color: "#6B7280" }}
+                              >
+                                المتبقي
+                              </p>
+                              <p
+                                className="text-[13px] font-bold"
+                                style={{
+                                  color:
+                                    inst.balance > 0 ? "#BA7517" : "#181d26",
+                                }}
+                              >
+                                {formatCurrency(inst.balance)}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )
               )}
-            </div>
 
-            {/* Payment history */}
-            <div
-              className="bg-white rounded-[18px] border p-5"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <History
-                  className="w-4 h-4"
-                  strokeWidth={2.2}
-                  style={{ color: "#1b61c9" }}
-                />
-                <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                  سجل الدفعات
-                </h2>
-              </div>
-              {payments.length === 0 ? (
-                <p
-                  className="text-sm text-center py-6"
-                  style={{ color: "#6B7280" }}
-                >
-                  لا توجد دفعات بعد
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {payments.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                    >
-                      <div className="min-w-0">
-                        <p
-                          className="text-sm font-semibold"
-                          style={{ color: "#181d26" }}
-                        >
-                          {formatDate(p.paymentDate)}
-                        </p>
-                        {p.paymentMethod && (
-                          <p
-                            className="text-[12px] mt-0.5"
-                            style={{ color: "#6B7280" }}
-                          >
-                            {PAYMENT_METHOD_LABELS[
-                              p.paymentMethod.toLowerCase()
-                            ] ?? p.paymentMethod}
-                          </p>
-                        )}
-                      </div>
-                      <span
-                        className="text-sm font-bold flex-shrink-0"
-                        style={{ color: "#4F7A1F" }}
+              {/* Tab Content: Payment history */}
+              {activeTab === "payments" && (
+                payments.length === 0 ? (
+                  <p
+                    className="text-sm text-center py-6"
+                    style={{ color: "#6B7280" }}
+                  >
+                    لا توجد دفعات بعد
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {payments.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
                       >
-                        {formatCurrency(p.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <div className="min-w-0">
+                          <p
+                            className="text-sm font-semibold"
+                            style={{ color: "#181d26" }}
+                          >
+                            {formatDate(p.paymentDate)}
+                          </p>
+                          {p.paymentMethod && (
+                            <p
+                              className="text-[12px] mt-0.5"
+                              style={{ color: "#6B7280" }}
+                            >
+                              {PAYMENT_METHOD_LABELS[
+                                p.paymentMethod.toLowerCase()
+                              ] ?? p.paymentMethod}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className="text-sm font-bold flex-shrink-0"
+                          style={{ color: "#4F7A1F" }}
+                        >
+                          {formatCurrency(p.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </>
