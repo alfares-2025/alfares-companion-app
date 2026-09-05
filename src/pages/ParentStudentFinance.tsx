@@ -358,7 +358,7 @@ export default function ParentStudentFinance() {
                 style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
               >
                 <ChevronRight className="w-4 h-4" />
-                الأبناء
+                رجوع
               </button>
             ) : (
               // Single-child guardian skipped the list screen at login — there
