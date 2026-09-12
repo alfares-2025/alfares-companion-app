@@ -24,6 +24,7 @@ import {
   Bell,
   Star,
   ChevronLeft,
+  Activity,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
@@ -55,6 +56,22 @@ function firstName(name: string): string {
 /** Local copy of PartnerDashboard.tsx's currency formatter (not exported there). */
 function formatCurrency(value: number): string {
   return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
+}
+
+/**
+ * Grammatically-correct Arabic for "for N child(ren)". Arabic number agreement
+ * needs four cases, so a bare `لـ${n} أبناء` (wrong for 1, 2, and 11+) will not
+ * do:
+ *   1        → لابن واحد
+ *   2        → لابنين
+ *   3‑10     → لـ{n} أبناء   (plural of paucity)
+ *   11+      → لـ{n} ابنًا    (accusative singular after 11+)
+ */
+function formatChildrenCount(n: number): string {
+  if (n === 1) return "لابن واحد";
+  if (n === 2) return "لابنين";
+  if (n >= 3 && n <= 10) return `لـ${n} أبناء`;
+  return `لـ${n} ابنًا`;
 }
 
 export default function ParentChildren() {
@@ -272,36 +289,45 @@ export default function ParentChildren() {
               entirely when no child has an installment plan yet (total 0),
               so an absence of data never reads as poor commitment. */}
           {commitment && commitment.totalInstallments > 0 && (
-            <div
-              className="flex items-center gap-0.5 mt-1.5"
-              role="img"
-              aria-label={`الالتزام ${commitment.starRating} من 5`}
-            >
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star
-                  key={i}
-                  size={14}
-                  strokeWidth={1.5}
-                  className={
-                    i < commitment.starRating
-                      ? "text-[#F59E0B]"
-                      : "text-[#181d26]/15"
-                  }
-                  fill={i < commitment.starRating ? "currentColor" : "none"}
-                />
-              ))}
+            <div className="mt-1.5">
+              <div
+                className="flex items-center gap-0.5"
+                role="img"
+                aria-label={`الالتزام ${commitment.starRating} من 5`}
+              >
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star
+                    key={i}
+                    size={14}
+                    strokeWidth={1.5}
+                    className={
+                      i < commitment.starRating
+                        ? "text-[#F59E0B]"
+                        : "text-[#181d26]/15"
+                    }
+                    fill={i < commitment.starRating ? "currentColor" : "none"}
+                  />
+                ))}
+              </div>
+              <p className="text-[11px] mt-1" style={{ color: "#6B7280" }}>
+                {children.length === 1 ? "التزام بالمواعيد" : "التزام إجمالي"}:{" "}
+                {commitment.committedInstallments} من{" "}
+                {commitment.totalInstallments} أقساط
+              </p>
             </div>
           )}
 
-          {/* School logo + name, centered (both optional) */}
+          {/* School card — logo + name on a light card bar (both optional) */}
           {(schoolLogo || schoolName) && (
-            <div className="flex flex-col items-center gap-2 mb-3">
+            <div
+              className="flex items-center justify-center gap-3 mt-3 mb-3 bg-white rounded-[14px] border px-4 py-3"
+              style={{ borderColor: "#e0e2e6" }}
+            >
               {schoolLogo && (
                 <img
                   src={schoolLogo}
                   alt=""
-                  className="w-14 h-14 rounded-xl object-contain bg-white border"
-                  style={{ borderColor: "#e0e2e6" }}
+                  className="w-10 h-10 rounded-lg object-contain bg-white flex-shrink-0"
                 />
               )}
               {schoolName && (
@@ -344,16 +370,72 @@ export default function ParentChildren() {
           </div>
         )}
 
-        {/* Summary hero — aggregate totals across all the guardian's children,
-            shown before any single child is opened. Accent-tinted like
-            PartnerDashboard.tsx's hero card. */}
-        {!error && children.length > 0 && financeSummary && (
-          <div
-            className="rounded-[18px] p-5"
-            style={{ backgroundColor: "#e8f0fc" }}
-          >
-            <div className="flex items-stretch gap-3 mb-3">
-              <div className="flex-1 min-w-0">
+        {/* Summary hero — aggregate paid-vs-due across all the guardian's
+            children as an SVG donut (paid % of total due), shown before any
+            single child is opened. Card conventions match the rest of this
+            file (bg-white, rounded, #e0e2e6 border). */}
+        {!error && children.length > 0 && financeSummary && (() => {
+          const ratio =
+            financeSummary.totalDue > 0
+              ? Math.min(
+                  1,
+                  Math.max(0, financeSummary.totalPaid / financeSummary.totalDue),
+                )
+              : 0;
+          const pct = Math.round(ratio * 100);
+          const RADIUS = 36;
+          const CIRC = 2 * Math.PI * RADIUS;
+          return (
+            <div
+              className="bg-white rounded-[16px] border p-5 flex items-center gap-5"
+              style={{ borderColor: "#e0e2e6" }}
+            >
+              <div
+                className="relative flex-shrink-0"
+                style={{ width: 88, height: 88 }}
+              >
+                <svg width="88" height="88" viewBox="0 0 88 88">
+                  <circle
+                    cx="44"
+                    cy="44"
+                    r={RADIUS}
+                    fill="none"
+                    stroke="#e0e2e6"
+                    strokeWidth="10"
+                  />
+                  <circle
+                    cx="44"
+                    cy="44"
+                    r={RADIUS}
+                    fill="none"
+                    stroke="#1b61c9"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={CIRC}
+                    strokeDashoffset={CIRC * (1 - ratio)}
+                    transform="rotate(-90 44 44)"
+                  />
+                </svg>
+                <span
+                  className="absolute inset-0 flex items-center justify-center text-[16px] font-bold"
+                  style={{ color: "#1b61c9" }}
+                >
+                  {pct}%
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-[11px] font-medium mb-1"
+                  style={{ color: "#4B5563" }}
+                >
+                  إجمالي المدفوع {formatChildrenCount(financeSummary.studentCount)}
+                </p>
+                <p
+                  className="text-[18px] font-bold leading-tight break-words mb-2"
+                  style={{ color: "#1b61c9" }}
+                >
+                  {formatCurrency(financeSummary.totalPaid)}
+                </p>
                 <p
                   className="text-[11px] font-medium mb-1"
                   style={{ color: "#4B5563" }}
@@ -361,61 +443,15 @@ export default function ParentChildren() {
                   إجمالي الرسوم
                 </p>
                 <p
-                  className="text-[18px] font-bold leading-tight break-words"
-                  style={{ color: "#0C447C" }}
+                  className="text-[15px] font-bold leading-tight break-words"
+                  style={{ color: "#181d26" }}
                 >
                   {formatCurrency(financeSummary.totalDue)}
                 </p>
               </div>
-              <div
-                className="w-px self-stretch flex-shrink-0"
-                style={{ backgroundColor: "#c5d8f0" }}
-              />
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-[11px] font-medium mb-1"
-                  style={{ color: "#4B5563" }}
-                >
-                  إجمالي المدفوع
-                </p>
-                <p
-                  className="text-[18px] font-bold leading-tight break-words"
-                  style={{ color: "#1b61c9" }}
-                >
-                  {formatCurrency(financeSummary.totalPaid)}
-                </p>
-              </div>
             </div>
-
-            {financeSummary.totalDue > 0 && (
-              <div
-                className="h-1.5 rounded-full overflow-hidden mb-2"
-                style={{ backgroundColor: "rgba(255,255,255,0.6)" }}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        Math.round(
-                          (financeSummary.totalPaid / financeSummary.totalDue) *
-                            100,
-                        ),
-                      ),
-                    )}%`,
-                    backgroundColor: "#1b61c9",
-                  }}
-                />
-              </div>
-            )}
-
-            <p className="text-[11px] font-medium" style={{ color: "#4B5563" }}>
-              لـ{financeSummary.studentCount} أبناء
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {error && (
           <div
@@ -451,7 +487,72 @@ export default function ParentChildren() {
           </div>
         )}
 
-        {!error && children.length > 0 && (
+        {/* Single-child guardian — one larger featured card (avatar + name +
+            grade) with a full-width finance button below it. No per-row
+            mini-rating here: the aggregate stars under the greeting already
+            cover this one child. */}
+        {!error && children.length === 1 && (
+          <>
+            <div className="flex items-center gap-2 px-1">
+              <Users
+                className="w-4 h-4"
+                strokeWidth={2.2}
+                style={{ color: "#1b61c9" }}
+              />
+              <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
+                الأبناء
+              </h2>
+            </div>
+            <div
+              className="bg-white rounded-[14px] border p-5"
+              style={{ borderColor: "#e0e2e6" }}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span
+                  className="inline-flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0 text-base font-bold"
+                  style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                >
+                  {children[0].name.trim().charAt(0) || "؟"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="font-semibold truncate"
+                    style={{ color: "#181d26" }}
+                  >
+                    {children[0].name}
+                  </p>
+                  {children[0].grade && (
+                    <p
+                      className="text-[13px] mt-0.5"
+                      style={{ color: "#6B7280" }}
+                    >
+                      {children[0].grade}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate({
+                    to: "/parent-dashboard/children/$studentId/finance",
+                    params: { studentId: children[0].id },
+                  })
+                }
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-[12px] py-3 text-sm font-bold text-white transition hover:opacity-90 active:opacity-90"
+                style={{ backgroundColor: "#1b61c9" }}
+              >
+                عرض التفاصيل المالية
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Multi-child guardian — compact row list. Row order: avatar,
+            name+grade (the tap target), a compact 3-star mini-rating scaled
+            from this child's own starRating, then the chevron cue. */}
+        {!error && children.length > 1 && (
           <>
             <div className="flex items-center gap-2 px-1">
               <Users
@@ -464,25 +565,24 @@ export default function ParentChildren() {
               </h2>
             </div>
             <div className="space-y-2">
-              {children.map((child) => (
-                <div
-                  key={child.id}
-                  className="w-full bg-white rounded-[14px] border p-4 flex items-center gap-3 text-right transition hover:border-slate-300"
-                  style={{ borderColor: "#e0e2e6" }}
-                >
-                  <span
-                    className="inline-flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 text-sm font-bold"
-                    style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+              {children.map((child, i) => {
+                const entry = commitment?.byStudent?.[i];
+                const miniStars =
+                  entry && entry.totalInstallments > 0
+                    ? Math.round((entry.starRating / 5) * 3)
+                    : null;
+                return (
+                  <div
+                    key={child.id}
+                    className="w-full bg-white rounded-[14px] border p-4 flex items-center gap-3 text-right transition hover:border-slate-300"
+                    style={{ borderColor: "#e0e2e6" }}
                   >
-                    {child.name.trim().charAt(0) || "؟"}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    {/* The student's name IS the clickable element (replaces
-                        the former "تفاصيل" chip) — bound to THIS child's id,
-                        same navigation call. The chevron is a permanent,
-                        always-visible cue that the name leads somewhere (hover
-                        never fires on touch); active: gives immediate press
-                        feedback, hover: is kept for desktop/web. */}
+                    <span
+                      className="inline-flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 text-sm font-bold"
+                      style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                    >
+                      {child.name.trim().charAt(0) || "؟"}
+                    </span>
                     <button
                       type="button"
                       onClick={() =>
@@ -492,24 +592,76 @@ export default function ParentChildren() {
                         })
                       }
                       aria-label={`تفاصيل ${child.name}`}
-                      className="flex items-center gap-1 max-w-full font-semibold cursor-pointer transition-colors text-[#1b61c9] hover:text-[#1553a3] active:text-[#1553a3]"
+                      className="min-w-0 flex-1 text-right cursor-pointer"
                     >
-                      <span className="truncate">{child.name}</span>
-                      <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                      <span className="block truncate font-semibold transition-colors text-[#1b61c9] hover:text-[#1553a3] active:text-[#1553a3]">
+                        {child.name}
+                      </span>
+                      {child.grade && (
+                        <span
+                          className="block text-[13px] mt-0.5"
+                          style={{ color: "#6B7280" }}
+                        >
+                          {child.grade}
+                        </span>
+                      )}
                     </button>
-                    {child.grade && (
-                      <p
-                        className="text-[13px] mt-0.5"
-                        style={{ color: "#6B7280" }}
+                    {miniStars !== null && (
+                      <div
+                        className="flex items-center gap-0.5 flex-shrink-0"
+                        role="img"
+                        aria-label={`الالتزام ${miniStars} من 3`}
                       >
-                        {child.grade}
-                      </p>
+                        {[0, 1, 2].map((s) => (
+                          <Star
+                            key={s}
+                            size={12}
+                            strokeWidth={1.5}
+                            className={
+                              s < miniStars
+                                ? "text-[#F5B301]"
+                                : "text-[#D1D5DB]"
+                            }
+                            fill={s < miniStars ? "currentColor" : "none"}
+                          />
+                        ))}
+                      </div>
                     )}
+                    <ChevronLeft
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{ color: "#1b61c9" }}
+                    />
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
+        )}
+
+        {/* Bottom activity nudge — static prompt filling the space below the
+            list, tapping through to the full recent-activity feed (same target
+            as the header bell). Deliberately no data fetch here. */}
+        {!error && children.length > 0 && (
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/parent-dashboard/activity" })}
+            className="w-full flex items-center gap-3 rounded-[14px] p-3.5 text-right transition hover:opacity-90 active:opacity-90"
+            style={{ backgroundColor: "#e8f0fc" }}
+          >
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-white">
+              <Activity className="w-4 h-4" style={{ color: "#1b61c9" }} />
+            </span>
+            <span
+              className="flex-1 min-w-0 text-[13px] font-medium"
+              style={{ color: "#1b61c9" }}
+            >
+              تحقق من آخر النشاطات المالية
+            </span>
+            <ChevronLeft
+              className="w-4 h-4 flex-shrink-0"
+              style={{ color: "#1b61c9" }}
+            />
+          </button>
         )}
       </main>
 

@@ -547,10 +547,25 @@ export async function markPaymentsSeen(): Promise<void> {
 // single-student stars: starRating = round(committed / total * 5). When
 // totalInstallments is 0 (no installment plan for any child yet), the
 // companion app hides the star row rather than showing 0 stars.
+//
+// `byStudent` is the same computation per child, in the SAME order as
+// getParentChildren()'s `students` (backend orders both by full_name ASC), so
+// each entry lines up with its list row. Used for the compact 3-star per-row
+// rating in the multi-child variant.
+export interface ParentCommitmentByStudent {
+  studentId: string;
+  name: string;
+  grade: string | null;
+  totalInstallments: number;
+  committedInstallments: number;
+  starRating: number;
+}
+
 export interface ParentCommitmentSummary {
   totalInstallments: number;
   committedInstallments: number;
   starRating: number;
+  byStudent: ParentCommitmentByStudent[];
 }
 
 export async function getCommitmentSummary(): Promise<ParentCommitmentSummary> {
