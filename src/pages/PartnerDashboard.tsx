@@ -6,6 +6,7 @@ import {
   getRecentTransactions,
   getCurrentUser,
   getUnreadCount,
+  logout,
   ApiError,
   type FinanceStatistics,
   type TopDebtor,
@@ -558,7 +559,14 @@ export default function PartnerDashboard() {
               </div>
               {/* Logout */}
               <button
-                onClick={() => navigate({ to: "/login" })}
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch (err) {
+                    console.error("Failed to logout:", err);
+                  }
+                  navigate({ to: "/login" });
+                }}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#6B7280] hover:text-[#181d26] transition"
               >
                 <LogOut className="w-4 h-4" />

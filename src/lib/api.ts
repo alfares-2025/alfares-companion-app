@@ -86,13 +86,8 @@ export async function getCurrentUser(): Promise<AuthUser> {
   return response.user;
 }
 
-/**
- * No backend logout endpoint exists yet.
- * For now this is a placeholder — the session lives entirely in the
- * backend's HTTP-only cookie, so there's no local token to clear.
- */
-export async function logout(): Promise<void> {
-  // TODO: call /api/auth/logout once the backend exposes it
+export async function logout(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
 }
 
 // ---------------------------------------------------------------------------
