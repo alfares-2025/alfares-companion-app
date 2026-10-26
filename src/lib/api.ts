@@ -480,7 +480,7 @@ export interface ParentStudentFinance {
 // sent (the backend resolves the school from which access code matches).
 export async function parentLogin(
   guardianNationalId: string,
-  code: string,
+  code?: string,
 ): Promise<ParentLoginResponse> {
   return request<ParentLoginResponse>("/api/parent-portal/login", {
     method: "POST",
