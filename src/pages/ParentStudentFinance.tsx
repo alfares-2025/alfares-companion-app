@@ -553,7 +553,7 @@ export default function ParentStudentFinance() {
                   <ol className="space-y-3">
                     {installments.map((inst, index) => {
                       const st = getInstallmentStatus(inst.status);
-                      const num = inst.installmentNo != null ? inst.installmentNo : index + 1;
+                      const num = index + 1; // numbered by due-date order, not the stored number
                       const pct =
                         inst.amountDue > 0
                           ? Math.min(100, Math.round((inst.amountPaid / inst.amountDue) * 100))
