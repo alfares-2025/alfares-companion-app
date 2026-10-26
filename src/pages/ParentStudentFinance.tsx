@@ -32,6 +32,16 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: "بطاقة",
 };
 
+// What a payment was for. Unknown / generic categories are simply not shown.
+const PAYMENT_CATEGORY_LABELS: Record<string, string> = {
+  tuition: "رسوم دراسية",
+  seat_reservation_fee: "رسوم حجز المقعد",
+  opening_balance: "رصيد سابق",
+  transport: "مواصلات",
+  uniform: "الزي",
+  books: "الكتب",
+};
+
 const PAYMENT_METHOD_ICONS = {
   cash: Banknote,
   check: FileCheck2,
@@ -356,7 +366,7 @@ export default function ParentStudentFinance() {
 
           <div className="rise" style={{ ["--i" as string]: 0 }}>
             {studentName && (
-              <h1 className="text-[22px] font-extrabold leading-tight">
+              <h1 className="text-[18px] font-extrabold leading-snug">
                 {studentName}
               </h1>
             )}
@@ -641,6 +651,8 @@ export default function ParentStudentFinance() {
                   <ul className="bg-white rounded-lg px-4 divide-y" style={{ borderColor: "var(--line)" }}>
                     {payments.map((p, index) => {
                       const method = p.paymentMethod?.toLowerCase() ?? "";
+                      const categoryLabel =
+                        PAYMENT_CATEGORY_LABELS[(p.paymentCategory ?? "").toLowerCase()] ?? null;
                       const Icon =
                         PAYMENT_METHOD_ICONS[method as keyof typeof PAYMENT_METHOD_ICONS] ?? Banknote;
                       return (
@@ -659,9 +671,21 @@ export default function ParentStudentFinance() {
                             <p className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>
                               {formatDate(p.paymentDate)}
                             </p>
-                            {p.paymentMethod && (
+                            {(p.paymentMethod || categoryLabel) && (
                               <p className="text-[12px] mt-0.5" style={{ color: "var(--ink-3)" }}>
-                                {PAYMENT_METHOD_LABELS[method] ?? p.paymentMethod}
+                                {[
+                                  p.paymentMethod
+                                    ? (PAYMENT_METHOD_LABELS[method] ?? p.paymentMethod)
+                                    : null,
+                                  categoryLabel,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                            )}
+                            {p.receiptNumber && (
+                              <p className="text-[12px] mt-0.5" style={{ color: "var(--ink-3)" }}>
+                                سند رقم {p.receiptNumber}
                               </p>
                             )}
                           </div>

@@ -446,6 +446,7 @@ export interface ParentPayment {
   paymentDate: string | null;
   paymentMethod: string | null;
   paymentCategory: string | null;
+  receiptNumber?: string | null;
   status: string | null;
 }
 
