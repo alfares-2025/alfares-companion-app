@@ -29,6 +29,7 @@ import {
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
 import { formatCurrency, firstName, computeGreeting } from "@/lib/format";
+import { setSessionHint, clearSessionHint } from "@/lib/sessionHint";
 
 /**
  * Parent Portal — children list (multi-child guardians land here after
@@ -106,6 +107,7 @@ export default function ParentChildren() {
             () => null as ParentCommitmentSummary | null,
           ),
         ]);
+        setSessionHint();
         setChildren(data.students);
         setGuardianName(data.guardianName);
         setSchoolName(data.schoolName);
@@ -160,6 +162,7 @@ export default function ParentChildren() {
   });
 
   async function handleLogout() {
+    clearSessionHint();
     try {
       await parentLogout();
     } catch {

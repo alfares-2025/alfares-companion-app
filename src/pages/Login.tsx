@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { parentLogin, getParentChildren, ApiError } from "@/lib/api";
+import { hasSessionHint, setSessionHint, clearSessionHint } from "@/lib/sessionHint";
 import { Loader2, GraduationCap, ArrowLeft } from "lucide-react";
 
 export default function Login() {
@@ -12,6 +13,10 @@ export default function Login() {
   // Check if an existing persistent parent session is already active
   useEffect(() => {
     let cancelled = false;
+    if (!hasSessionHint()) {
+      setCheckingSession(false);
+      return;
+    }
     getParentChildren()
       .then(() => {
         if (cancelled) return;
@@ -20,6 +25,7 @@ export default function Login() {
         navigate({ to: "/parent-dashboard/children" });
       })
       .catch(() => {
+        clearSessionHint();
         if (!cancelled) {
           setCheckingSession(false);
         }
@@ -39,6 +45,7 @@ export default function Login() {
 
     try {
       await parentLogin(guardianNationalId);
+      setSessionHint();
       // Every guardian lands on the children list first, regardless of how
       // many children they have — no direct-to-finance shortcut.
       navigate({ to: "/parent-dashboard/children" });
