@@ -253,7 +253,7 @@ export default function ParentStudentFinance() {
         className="min-h-screen flex items-center justify-center px-4"
         style={{ backgroundColor: "var(--paper)" }}
       >
-        <div className="bg-white rounded-lg px-6 py-8 text-center max-w-sm w-full">
+        <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-8 text-center max-w-sm w-full">
           <div
             className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
             style={{ backgroundColor: "var(--bad-soft)" }}
@@ -313,7 +313,7 @@ export default function ParentStudentFinance() {
   ];
 
   const emptyState = (text: string) => (
-    <div className="bg-white rounded-lg px-6 py-10 text-center">
+    <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-10 text-center">
       <div
         className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
         style={{ backgroundColor: "var(--paper)" }}
@@ -454,7 +454,7 @@ export default function ParentStudentFinance() {
             {activeTab === "summary" && (
               <div key="summary" className="space-y-4">
                 {summary ? (
-                  <div className="rise bg-white rounded-lg px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 0 }}>
+                  <div className="rise bg-white rounded-lg border border-[color:var(--line)] px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 0 }}>
                     <StatementRow label="إجمالي الرسوم الحالية" value={formatCurrency(netFees + discountsTotal)} />
                     {discountsTotal > 0 && (
                       <StatementRow
@@ -485,7 +485,7 @@ export default function ParentStudentFinance() {
                 ) : null}
 
                 {summary && dueSales.length > 0 && (
-                  <section className="rise bg-white rounded-lg px-5 pt-4 pb-2" style={{ ["--i" as string]: 1 }}>
+                  <section className="rise bg-white rounded-lg border border-[color:var(--line)] px-5 pt-4 pb-2" style={{ ["--i" as string]: 1 }}>
                     <h2 className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
                       المشتريات من مبيعات الطلاب
                     </h2>
@@ -526,7 +526,7 @@ export default function ParentStudentFinance() {
                   </section>
                 )}
 
-                <div className="rise bg-white rounded-lg px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 2 }}>
+                <div className="rise bg-white rounded-lg border border-[color:var(--line)] px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 2 }}>
                   <StatementRow label="إجمالي المستحق" value={formatCurrency(account.totalDue)} strong />
                   {summary && summary.cashPaid > 0 && (
                     <StatementRow label="المدفوع نقداً" value={formatCurrency(summary.cashPaid)} color="var(--brand)" />
@@ -565,7 +565,7 @@ export default function ParentStudentFinance() {
                       return (
                         <li
                           key={`${inst.installmentNo ?? index}-${index}`}
-                          className="rise bg-white rounded-lg p-4"
+                          className="rise bg-white rounded-lg border border-[color:var(--line)] p-4"
                           style={{ ["--i" as string]: index }}
                         >
                           <div className="flex items-center gap-3">
@@ -587,7 +587,7 @@ export default function ParentStudentFinance() {
                               </p>
                             </div>
                             <span
-                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold flex-shrink-0"
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-bold flex-shrink-0"
                               style={{ backgroundColor: st.bg, color: st.text }}
                             >
                               {st.label}
@@ -603,13 +603,13 @@ export default function ParentStudentFinance() {
 
                           <div className="mt-2.5 grid grid-cols-3 text-right">
                             <div>
-                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المبلغ المستحق</p>
+                              <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>المبلغ المستحق</p>
                               <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--ink)" }}>
                                 {formatCurrency(inst.amountDue)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المدفوع</p>
+                              <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>المدفوع</p>
                               <p
                                 className="text-[14px] font-bold mt-0.5"
                                 style={{ color: inst.amountPaid > 0 ? "var(--ok)" : "var(--ink)" }}
@@ -618,7 +618,7 @@ export default function ParentStudentFinance() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المتبقي</p>
+                              <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>المتبقي</p>
                               <p
                                 className="text-[14px] font-bold mt-0.5"
                                 style={{ color: inst.balance > 0 ? "var(--warn)" : "var(--ink)" }}
@@ -641,7 +641,7 @@ export default function ParentStudentFinance() {
                 {payments.length === 0 ? (
                   emptyState("لا توجد دفعات بعد")
                 ) : (
-                  <ul className="bg-white rounded-lg px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+                  <ul className="bg-white rounded-lg border border-[color:var(--line)] px-4 divide-y" style={{ borderColor: "var(--line)" }}>
                     {payments.map((p, index) => {
                       const method = p.paymentMethod?.toLowerCase() ?? "";
                       const categoryLabel =

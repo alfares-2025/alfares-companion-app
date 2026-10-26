@@ -9,9 +9,9 @@
   --paper: #f4f8fb;
   --card: #ffffff;
   --ink: #0f1b2d;
-  --ink-2: #4a5668;
-  --ink-3: #6b778a;
-  --line: #e2e8f0;
+  --ink-2: #364152;
+  --ink-3: #4f5b6b;
+  --line: #d3dce6;
   --brand: #0178b8;
   --brand-deep: #075985;
   --brand-soft: #e0f2fe;
@@ -22,8 +22,8 @@
   --bad: #b42318;
   --bad-soft: #fdecea;
   --hero-ink: #0b3a57;
-  --hero-ink-2: #2f5f7c;
-  --hero-track: rgba(1, 120, 184, 0.18);
+  --hero-ink-2: #1d4663;
+  --hero-track: rgba(1, 120, 184, 0.28);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 

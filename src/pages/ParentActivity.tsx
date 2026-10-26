@@ -225,7 +225,7 @@ export default function ParentActivity() {
 
       <main className="max-w-2xl mx-auto px-4 pt-5 pb-10 space-y-5">
         {error && (
-          <div className="bg-white rounded-lg px-6 py-8 text-center">
+          <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-8 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--bad-soft)" }}
@@ -239,7 +239,7 @@ export default function ParentActivity() {
         )}
 
         {!error && activities.length === 0 && (
-          <div className="bg-white rounded-lg px-6 py-10 text-center">
+          <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-10 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--paper)" }}
@@ -261,7 +261,7 @@ export default function ParentActivity() {
               >
                 {group.label}
               </h2>
-              <ul className="bg-white rounded-lg px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+              <ul className="bg-white rounded-lg border border-[color:var(--line)] px-4 divide-y" style={{ borderColor: "var(--line)" }}>
                 {group.items.map((item, index) => {
                   const visual = activityVisual(item.type);
                   const sign = item.amount < 0 ? "- " : "";

@@ -345,7 +345,7 @@ export default function ParentChildren() {
         )}
 
         {error && (
-          <div className="bg-white rounded-lg px-6 py-8 text-center">
+          <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-8 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--bad-soft)" }}
@@ -359,7 +359,7 @@ export default function ParentChildren() {
         )}
 
         {!error && children.length === 0 && (
-          <div className="bg-white rounded-lg px-6 py-10 text-center">
+          <div className="bg-white rounded-lg border border-[color:var(--line)] px-6 py-10 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--paper)" }}
@@ -378,7 +378,7 @@ export default function ParentChildren() {
               <Users className="w-4 h-4" strokeWidth={2.2} style={{ color: "var(--brand)" }} />
               الأبناء
             </h2>
-            <div className="bg-white rounded-lg divide-y" style={{ borderColor: "var(--line)" }}>
+            <div className="bg-white rounded-lg border border-[color:var(--line)] divide-y" style={{ borderColor: "var(--line)" }}>
               {children.map((child, i) => {
                 const entry = commitment?.byStudent?.[i];
                 const miniStars =
@@ -467,7 +467,7 @@ export default function ParentChildren() {
 
       <footer className="px-4 py-8">
         <div className="max-w-2xl mx-auto text-center space-y-1">
-          <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>
+          <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>
             جميع الحقوق محفوظة © {new Date().getFullYear()} شركة nun
           </p>
           <p className="text-[12px] font-bold" style={{ color: "var(--ink-3)" }}>
