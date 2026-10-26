@@ -6,21 +6,24 @@
 
 :root {
   font-family: "Cairo", system-ui, -apple-system, sans-serif;
-  --paper: #f3f6fb;
+  --paper: #f4f8fb;
   --card: #ffffff;
   --ink: #0f1b2d;
   --ink-2: #4a5668;
   --ink-3: #6b778a;
   --line: #e2e8f0;
-  --brand: #0f766e;
-  --brand-deep: #0b4f4a;
-  --brand-soft: #e1f1ee;
+  --brand: #0178b8;
+  --brand-deep: #075985;
+  --brand-soft: #e0f2fe;
   --ok: #237a3b;
   --ok-soft: #e6f4ea;
   --warn: #a8610a;
   --warn-soft: #fdf1dc;
   --bad: #b42318;
   --bad-soft: #fdecea;
+  --hero-ink: #0b3a57;
+  --hero-ink-2: #2f5f7c;
+  --hero-track: rgba(1, 120, 184, 0.18);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -57,25 +60,26 @@ input {
   scrollbar-color: #c3cddb transparent;
 }
 
-/* Deep-blue hero surface with a fine diagonal weave */
+/* Light sky hero surface with a fine diagonal weave */
 .hero-surface {
-  background-color: var(--brand-deep);
+  color: var(--hero-ink);
+  background-color: #d3ebfa;
   background-image:
     repeating-linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.045) 0 1px,
+      rgba(255, 255, 255, 0.5) 0 1px,
       transparent 1px 14px
     ),
-    linear-gradient(180deg, #0b4f4a 0%, #0e625c 100%);
+    linear-gradient(180deg, #d8eefb 0%, #c4e5f8 100%);
 }
 
 .chip-glass {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--brand-deep);
   transition: background 0.2s var(--ease-out);
 }
 .chip-glass:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* One authored moment: content rises in once, staggered */

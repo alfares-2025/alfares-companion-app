@@ -321,12 +321,12 @@ export default function ParentStudentFinance() {
         pullProgress={pullProgress}
       />
 
-      <header className="hero-surface text-white px-4 pt-5 pb-7">
+      <header className="hero-surface px-4 pt-5 pb-7">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => navigate({ to: "/parent-dashboard/children" })}
-              className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-semibold"
+              className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-medium"
             >
               <ChevronRight className="w-[18px] h-[18px]" />
               رجوع
@@ -340,7 +340,7 @@ export default function ParentStudentFinance() {
                 />
               )}
               {schoolName && (
-                <p className="hidden min-[380px]:block text-[13px] font-semibold text-white/85 truncate max-w-[150px]">
+                <p className="text-[13px] font-semibold text-[color:var(--hero-ink)] leading-snug line-clamp-2 max-w-[8rem]">
                   {schoolName}
                 </p>
               )}
@@ -361,7 +361,7 @@ export default function ParentStudentFinance() {
               </h1>
             )}
             {account?.className && (
-              <span className="inline-block mt-2 rounded-full bg-white/10 px-3 py-1 text-[12px] font-semibold text-white/90">
+              <span className="inline-block mt-2 rounded-full bg-white/70 px-3 py-1 text-[12px] font-semibold text-[color:var(--hero-ink)]">
                 {account.className}
               </span>
             )}
@@ -369,7 +369,7 @@ export default function ParentStudentFinance() {
 
           {account && (
             <div className="rise mt-6" style={{ ["--i" as string]: 1 }}>
-              <p className="text-[13px] text-white/75">
+              <p className="text-[13px] text-[color:var(--hero-ink-2)]">
                 {account.balance < 0
                   ? "رصيد دائن"
                   : settled
@@ -379,13 +379,13 @@ export default function ParentStudentFinance() {
               <p className="mt-0.5 text-[44px] font-extrabold leading-none tracking-tight">
                 {formatCurrency(Math.abs(account.balance))}
               </p>
-              <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
+              <div className="mt-4 h-2 rounded-full bg-[color:var(--hero-track)] overflow-hidden">
                 <div
-                  className="bar-fill h-full rounded-full bg-white"
+                  className="bar-fill h-full rounded-full bg-[color:var(--brand)]"
                   style={{ width: barReady ? `${Math.round(paidRatio * 100)}%` : "0%" }}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between text-[12px] text-white/80">
+              <div className="mt-2 flex items-center justify-between text-[12px] text-[color:var(--hero-ink-2)]">
                 <span>إجمالي المدفوع {formatCurrency(account.totalPaid)}</span>
                 <span>إجمالي المستحق {formatCurrency(account.totalDue)}</span>
               </div>
@@ -412,7 +412,7 @@ export default function ParentStudentFinance() {
                   className="relative flex-1 py-3.5 text-[14px] transition-colors"
                   style={{
                     color: on ? "var(--brand)" : "var(--ink-3)",
-                    fontWeight: on ? 700 : 500,
+                    fontWeight: 500,
                   }}
                 >
                   {t.label}

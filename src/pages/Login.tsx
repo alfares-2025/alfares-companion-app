@@ -70,11 +70,11 @@ export default function Login() {
       {/* Brand band */}
       <div className="hero-surface px-6 pt-14 pb-24 text-white">
         <div className="max-w-sm mx-auto text-center rise" style={{ ["--i" as string]: 0 }}>
-          <span className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-white/15 mb-5">
+          <span className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-white/70 mb-5">
             <GraduationCap className="w-6 h-6" strokeWidth={2} />
           </span>
           <h1 className="text-[24px] font-extrabold leading-tight">بوابة أولياء الأمور</h1>
-          <p className="mt-2 text-[15px] text-white/80">
+          <p className="mt-2 text-[15px] text-[color:var(--hero-ink-2)]">
             تابع الوضع المالي لأبنائك أولاً بأول.
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function Login() {
           className="max-w-sm mx-auto rounded-xl bg-white px-6 py-7 rise"
           style={{
             ["--i" as string]: 2,
-            boxShadow: "0 12px 32px -12px rgba(11, 79, 74, 0.28)",
+            boxShadow: "0 12px 32px -12px rgba(1, 120, 184, 0.28)",
           }}
         >
           <h2 className="text-[18px] font-bold" style={{ color: "var(--ink)" }}>
@@ -127,7 +127,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 flex items-center justify-center gap-2 rounded-md text-white text-base font-bold transition active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-md text-white text-base font-medium transition active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--brand)" }}
             >
               {loading ? (

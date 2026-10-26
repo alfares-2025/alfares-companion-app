@@ -207,7 +207,7 @@ export default function ParentChildren() {
         pullProgress={pullProgress}
       />
 
-      <header className="hero-surface text-white px-4 pt-5 pb-8">
+      <header className="hero-surface px-4 pt-5 pb-8">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -219,7 +219,7 @@ export default function ParentChildren() {
                 />
               )}
               {schoolName && (
-                <p className="text-[14px] font-semibold text-white/90 truncate">
+                <p className="text-[14px] font-semibold text-[color:var(--hero-ink)] leading-snug line-clamp-2 max-w-[9rem]">
                   {schoolName}
                 </p>
               )}
@@ -240,7 +240,7 @@ export default function ParentChildren() {
                 {unreadPayments > 0 && (
                   <span
                     className="absolute -top-1 -left-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold pointer-events-none"
-                    style={{ backgroundColor: "#fff", color: "var(--brand-deep)" }}
+                    style={{ backgroundColor: "var(--brand)", color: "#fff" }}
                   >
                     {unreadPayments > 99 ? "99+" : unreadPayments}
                   </span>
@@ -257,7 +257,7 @@ export default function ParentChildren() {
           </div>
 
           <div className="rise" style={{ ["--i" as string]: 0 }}>
-            <p className="flex items-center gap-1.5 text-[13px] text-white/75">
+            <p className="flex items-center gap-1.5 text-[13px] text-[color:var(--hero-ink-2)]">
               {greeting.isNight ? (
                 <Moon className="w-3.5 h-3.5" />
               ) : (
@@ -272,7 +272,7 @@ export default function ParentChildren() {
 
           {commitment && commitment.totalInstallments > 0 && (
             <div
-              className="rise mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5"
+              className="rise mt-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5"
               style={{ ["--i" as string]: 1 }}
             >
               <div
@@ -285,12 +285,12 @@ export default function ParentChildren() {
                     key={i}
                     size={13}
                     strokeWidth={1.5}
-                    className={i < commitment.starRating ? "text-[#FBBF24]" : "text-white/30"}
+                    className={i < commitment.starRating ? "text-[#FBBF24]" : "text-[#0b3a57]/25"}
                     fill={i < commitment.starRating ? "currentColor" : "none"}
                   />
                 ))}
               </div>
-              <span className="text-[12px] text-white/85">
+              <span className="text-[12px] text-[color:var(--hero-ink)]">
                 {children.length === 1 ? "التزام بالمواعيد" : "التزام إجمالي"}:{" "}
                 {commitment.committedInstallments} من {commitment.totalInstallments} أقساط
               </span>
@@ -299,19 +299,19 @@ export default function ParentChildren() {
 
           {!error && children.length > 0 && financeSummary && (
             <div className="rise mt-6" style={{ ["--i" as string]: 2 }}>
-              <p className="text-[13px] text-white/75">
+              <p className="text-[13px] text-[color:var(--hero-ink-2)]">
                 المتبقي {formatChildrenCount(financeSummary.studentCount)}
               </p>
               <p className="mt-0.5 text-[40px] font-extrabold leading-none tracking-tight">
                 {formatCurrency(Math.max(0, remaining))}
               </p>
-              <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
+              <div className="mt-4 h-2 rounded-full bg-[color:var(--hero-track)] overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-white"
+                  className="h-full rounded-full bg-[color:var(--brand)]"
                   style={{ width: `${Math.round(ratio * 100)}%` }}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between text-[12px] text-white/80">
+              <div className="mt-2 flex items-center justify-between text-[12px] text-[color:var(--hero-ink-2)]">
                 <span>إجمالي المدفوع {formatCurrency(paid)}</span>
                 <span>إجمالي الرسوم {formatCurrency(due)}</span>
               </div>
@@ -392,13 +392,13 @@ export default function ParentChildren() {
                     style={{ ["--i" as string]: i + 3, borderColor: "var(--line)" }}
                   >
                     <span
-                      className="inline-flex items-center justify-center w-11 h-11 rounded-full flex-shrink-0 text-base font-bold"
+                      className="inline-flex items-center justify-center w-11 h-11 rounded-full flex-shrink-0 text-base font-medium"
                       style={{ backgroundColor: "var(--brand-soft)", color: "var(--brand)" }}
                     >
                       {child.name.trim().charAt(0) || "؟"}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-[15px]" style={{ color: "var(--ink)" }}>
+                      <span className="block truncate font-medium text-[15px]" style={{ color: "var(--ink)" }}>
                         {child.name}
                       </span>
                       {child.grade && (
@@ -434,7 +434,7 @@ export default function ParentChildren() {
               <button
                 type="button"
                 onClick={() => goToFinance(children[0].id)}
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-md h-12 text-[14px] font-bold text-white transition active:scale-[0.99]"
+                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-md h-12 text-[14px] font-medium text-white transition active:scale-[0.99]"
                 style={{ backgroundColor: "var(--brand)" }}
               >
                 عرض التفاصيل المالية
@@ -454,7 +454,7 @@ export default function ParentChildren() {
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 bg-white">
               <Activity className="w-[18px] h-[18px]" style={{ color: "var(--brand)" }} />
             </span>
-            <span className="flex-1 min-w-0 text-[14px] font-semibold" style={{ color: "var(--brand-deep)" }}>
+            <span className="flex-1 min-w-0 text-[14px] font-medium" style={{ color: "var(--brand-deep)" }}>
               تحقق من آخر النشاطات المالية
             </span>
             <ChevronLeft className="w-4 h-4 flex-shrink-0" style={{ color: "var(--brand)" }} />

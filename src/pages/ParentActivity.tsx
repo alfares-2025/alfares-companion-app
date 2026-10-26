@@ -203,11 +203,11 @@ export default function ParentActivity() {
         pullProgress={pullProgress}
       />
 
-      <header className="hero-surface text-white px-4 pt-5 pb-7">
+      <header className="hero-surface px-4 pt-5 pb-7">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => navigate({ to: "/parent-dashboard/children" })}
-            className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-semibold mb-6"
+            className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-medium mb-6"
           >
             <ChevronRight className="w-[18px] h-[18px]" />
             رجوع
@@ -216,7 +216,7 @@ export default function ParentActivity() {
             <h1 className="text-[24px] font-extrabold leading-tight">
               النشاط المالي
             </h1>
-            <p className="mt-1.5 text-[14px] text-white/80">
+            <p className="mt-1.5 text-[14px] text-[color:var(--hero-ink-2)]">
               كل ما استجد على حسابات أبنائك المالية.
             </p>
           </div>
