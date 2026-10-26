@@ -272,7 +272,6 @@ export default function ParentStudentFinance() {
 
   const {
     account,
-    feeItems,
     payments,
     academicPeriodId,
     installments: rawInstallments = [],
@@ -524,33 +523,6 @@ export default function ParentStudentFinance() {
                     strong
                   />
                 </div>
-
-                <section className="rise bg-white rounded-lg px-5 pt-4 pb-2" style={{ ["--i" as string]: 3 }}>
-                  <h2 className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
-                    بنود الرسوم
-                  </h2>
-                  {feeItems.length === 0 ? (
-                    <p className="text-sm text-center py-6" style={{ color: "var(--ink-3)" }}>
-                      لا توجد بنود رسوم
-                    </p>
-                  ) : (
-                    <div className="mt-1 divide-y" style={{ borderColor: "var(--line)" }}>
-                      {feeItems.map((item) => (
-                        <div key={item.id} className="flex items-baseline justify-between gap-3 py-3">
-                          <span className="text-[14px] truncate" style={{ color: "var(--ink-2)" }}>
-                            {item.itemName ?? item.itemType ?? "—"}
-                          </span>
-                          <span
-                            className="text-[14px] font-semibold flex-shrink-0"
-                            style={{ color: item.isDiscount ? "var(--ok)" : "var(--ink)" }}
-                          >
-                            {formatCurrency(item.amount)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
               </div>
             )}
 
