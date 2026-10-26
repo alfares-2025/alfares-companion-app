@@ -69,11 +69,11 @@ export default function Login() {
     <div dir="rtl" className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--paper)" }}>
       {/* Brand band */}
       <div className="hero-surface px-6 pt-14 pb-24 text-white">
-        <div className="max-w-sm mx-auto rise" style={{ ["--i" as string]: 0 }}>
-          <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 mb-5">
+        <div className="max-w-sm mx-auto text-center rise" style={{ ["--i" as string]: 0 }}>
+          <span className="inline-flex items-center justify-center w-14 h-14 rounded-lg bg-white/15 mb-5">
             <GraduationCap className="w-6 h-6" strokeWidth={2} />
           </span>
-          <h1 className="text-[28px] font-extrabold leading-tight">بوابة أولياء الأمور</h1>
+          <h1 className="text-[24px] font-extrabold leading-tight">بوابة أولياء الأمور</h1>
           <p className="mt-2 text-[15px] text-white/80">
             تابع الوضع المالي لأبنائك أولاً بأول.
           </p>
@@ -83,13 +83,13 @@ export default function Login() {
       {/* Form sheet overlapping the band */}
       <main className="flex-1 px-4 -mt-14">
         <div
-          className="max-w-sm mx-auto rounded-3xl bg-white px-6 py-7 rise"
+          className="max-w-sm mx-auto rounded-xl bg-white px-6 py-7 rise"
           style={{
             ["--i" as string]: 2,
-            boxShadow: "0 12px 32px -12px rgba(14, 60, 133, 0.28)",
+            boxShadow: "0 12px 32px -12px rgba(11, 79, 74, 0.28)",
           }}
         >
-          <h2 className="text-xl font-bold" style={{ color: "var(--ink)" }}>
+          <h2 className="text-[18px] font-bold" style={{ color: "var(--ink)" }}>
             تسجيل الدخول
           </h2>
           <p className="text-sm mt-1" style={{ color: "var(--ink-2)" }}>
@@ -113,7 +113,7 @@ export default function Login() {
                 value={guardianNationalId}
                 onChange={(e) => setGuardianNationalId(e.target.value)}
                 required
-                className="w-full h-12 rounded-xl border px-4 text-base outline-none transition focus:ring-4"
+                className="w-full h-12 rounded-md border px-4 text-base outline-none transition focus:ring-4"
                 style={{
                   borderColor: "var(--line)",
                   backgroundColor: "var(--paper)",
@@ -127,7 +127,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 flex items-center justify-center gap-2 rounded-xl text-white text-base font-bold transition active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-md text-white text-base font-bold transition active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "var(--brand)" }}
             >
               {loading ? (
@@ -144,7 +144,7 @@ export default function Login() {
           {error && (
             <div
               role="alert"
-              className="mt-5 rounded-xl px-4 py-3 text-sm font-medium text-center"
+              className="mt-5 rounded-md px-4 py-3 text-sm font-medium text-center"
               style={{ backgroundColor: "var(--bad-soft)", color: "var(--bad)" }}
             >
               {error}

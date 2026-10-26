@@ -12,9 +12,9 @@
   --ink-2: #4a5668;
   --ink-3: #6b778a;
   --line: #e2e8f0;
-  --brand: #1b61c9;
-  --brand-deep: #0e3c85;
-  --brand-soft: #e8f0fc;
+  --brand: #0f766e;
+  --brand-deep: #0b4f4a;
+  --brand-soft: #e1f1ee;
   --ok: #237a3b;
   --ok-soft: #e6f4ea;
   --warn: #a8610a;
@@ -66,7 +66,7 @@ input {
       rgba(255, 255, 255, 0.045) 0 1px,
       transparent 1px 14px
     ),
-    linear-gradient(180deg, #0e3c85 0%, #134a9e 100%);
+    linear-gradient(180deg, #0b4f4a 0%, #0e625c 100%);
 }
 
 .chip-glass {

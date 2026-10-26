@@ -245,9 +245,9 @@ export default function ParentStudentFinance() {
         className="min-h-screen flex items-center justify-center px-4"
         style={{ backgroundColor: "var(--paper)" }}
       >
-        <div className="bg-white rounded-2xl px-6 py-8 text-center max-w-sm w-full">
+        <div className="bg-white rounded-lg px-6 py-8 text-center max-w-sm w-full">
           <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+            className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
             style={{ backgroundColor: "var(--bad-soft)" }}
           >
             <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
@@ -292,9 +292,9 @@ export default function ParentStudentFinance() {
   ];
 
   const emptyState = (text: string) => (
-    <div className="bg-white rounded-2xl px-6 py-10 text-center">
+    <div className="bg-white rounded-lg px-6 py-10 text-center">
       <div
-        className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+        className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
         style={{ backgroundColor: "var(--paper)" }}
       >
         <Wallet className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
@@ -326,7 +326,7 @@ export default function ParentStudentFinance() {
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={() => navigate({ to: "/parent-dashboard/children" })}
-              className="chip-glass inline-flex items-center gap-1 rounded-xl h-9 pr-2 pl-3.5 text-[14px] font-semibold"
+              className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-semibold"
             >
               <ChevronRight className="w-[18px] h-[18px]" />
               رجوع
@@ -336,7 +336,7 @@ export default function ParentStudentFinance() {
                 <img
                   src={schoolLogo}
                   alt=""
-                  className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0"
+                  className="w-8 h-8 rounded-md object-contain bg-white p-0.5 flex-shrink-0"
                 />
               )}
               {schoolName && (
@@ -347,7 +347,7 @@ export default function ParentStudentFinance() {
               <button
                 onClick={() => navigate({ to: "/parent-dashboard/activity" })}
                 aria-label="النشاط المالي"
-                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
+                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0"
               >
                 <Bell className="w-[18px] h-[18px]" />
               </button>
@@ -356,7 +356,7 @@ export default function ParentStudentFinance() {
 
           <div className="rise" style={{ ["--i" as string]: 0 }}>
             {studentName && (
-              <h1 className="text-[26px] font-extrabold leading-tight">
+              <h1 className="text-[22px] font-extrabold leading-tight">
                 {studentName}
               </h1>
             )}
@@ -438,7 +438,7 @@ export default function ParentStudentFinance() {
             {activeTab === "summary" && (
               <div key="summary" className="space-y-4">
                 {summary ? (
-                  <div className="rise bg-white rounded-2xl px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 0 }}>
+                  <div className="rise bg-white rounded-lg px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 0 }}>
                     <StatementRow label="إجمالي الرسوم الحالية" value={formatCurrency(netFees + discountsTotal)} />
                     {discountsTotal > 0 && (
                       <StatementRow
@@ -455,8 +455,8 @@ export default function ParentStudentFinance() {
                 ) : null}
 
                 {summary && dueSales.length > 0 && (
-                  <section className="rise bg-white rounded-2xl px-5 pt-4 pb-2" style={{ ["--i" as string]: 1 }}>
-                    <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+                  <section className="rise bg-white rounded-lg px-5 pt-4 pb-2" style={{ ["--i" as string]: 1 }}>
+                    <h2 className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
                       المشتريات من مبيعات الطلاب
                     </h2>
                     <div className="mt-1 divide-y" style={{ borderColor: "var(--line)" }}>
@@ -496,7 +496,7 @@ export default function ParentStudentFinance() {
                   </section>
                 )}
 
-                <div className="rise bg-white rounded-2xl px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 2 }}>
+                <div className="rise bg-white rounded-lg px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 2 }}>
                   <StatementRow label="إجمالي المستحق" value={formatCurrency(account.totalDue)} strong />
                   {summary && summary.cashPaid > 0 && (
                     <StatementRow label="المدفوع نقداً" value={formatCurrency(summary.cashPaid)} color="var(--brand)" />
@@ -515,8 +515,8 @@ export default function ParentStudentFinance() {
                   />
                 </div>
 
-                <section className="rise bg-white rounded-2xl px-5 pt-4 pb-2" style={{ ["--i" as string]: 3 }}>
-                  <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+                <section className="rise bg-white rounded-lg px-5 pt-4 pb-2" style={{ ["--i" as string]: 3 }}>
+                  <h2 className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
                     بنود الرسوم
                   </h2>
                   {feeItems.length === 0 ? (
@@ -562,7 +562,7 @@ export default function ParentStudentFinance() {
                       return (
                         <li
                           key={`${inst.installmentNo ?? index}-${index}`}
-                          className="rise bg-white rounded-2xl p-4"
+                          className="rise bg-white rounded-lg p-4"
                           style={{ ["--i" as string]: index }}
                         >
                           <div className="flex items-center gap-3">
@@ -638,7 +638,7 @@ export default function ParentStudentFinance() {
                 {payments.length === 0 ? (
                   emptyState("لا توجد دفعات بعد")
                 ) : (
-                  <ul className="bg-white rounded-2xl px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+                  <ul className="bg-white rounded-lg px-4 divide-y" style={{ borderColor: "var(--line)" }}>
                     {payments.map((p, index) => {
                       const method = p.paymentMethod?.toLowerCase() ?? "";
                       const Icon =
@@ -650,7 +650,7 @@ export default function ParentStudentFinance() {
                           style={{ ["--i" as string]: Math.min(index, 8) }}
                         >
                           <span
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-md flex-shrink-0"
                             style={{ backgroundColor: "var(--brand-soft)", color: "var(--brand)" }}
                           >
                             <Icon className="w-[18px] h-[18px]" />
@@ -665,7 +665,7 @@ export default function ParentStudentFinance() {
                               </p>
                             )}
                           </div>
-                          <span className="text-[15px] font-bold flex-shrink-0" style={{ color: "var(--ok)" }}>
+                          <span className="text-[14px] font-bold flex-shrink-0" style={{ color: "var(--ok)" }}>
                             {formatCurrency(p.amount)}
                           </span>
                         </li>

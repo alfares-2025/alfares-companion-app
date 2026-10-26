@@ -207,13 +207,13 @@ export default function ParentActivity() {
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => navigate({ to: "/parent-dashboard/children" })}
-            className="chip-glass inline-flex items-center gap-1 rounded-xl h-9 pr-2 pl-3.5 text-[14px] font-semibold mb-6"
+            className="chip-glass inline-flex items-center gap-1 rounded-md h-9 pr-2 pl-3.5 text-[14px] font-semibold mb-6"
           >
             <ChevronRight className="w-[18px] h-[18px]" />
             رجوع
           </button>
           <div className="rise" style={{ ["--i" as string]: 0 }}>
-            <h1 className="text-[28px] font-extrabold leading-tight">
+            <h1 className="text-[24px] font-extrabold leading-tight">
               النشاط المالي
             </h1>
             <p className="mt-1.5 text-[14px] text-white/80">
@@ -225,9 +225,9 @@ export default function ParentActivity() {
 
       <main className="max-w-2xl mx-auto px-4 pt-5 pb-10 space-y-5">
         {error && (
-          <div className="bg-white rounded-2xl px-6 py-8 text-center">
+          <div className="bg-white rounded-lg px-6 py-8 text-center">
             <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--bad-soft)" }}
             >
               <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
@@ -239,9 +239,9 @@ export default function ParentActivity() {
         )}
 
         {!error && activities.length === 0 && (
-          <div className="bg-white rounded-2xl px-6 py-10 text-center">
+          <div className="bg-white rounded-lg px-6 py-10 text-center">
             <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--paper)" }}
             >
               <History className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
@@ -261,7 +261,7 @@ export default function ParentActivity() {
               >
                 {group.label}
               </h2>
-              <ul className="bg-white rounded-2xl px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+              <ul className="bg-white rounded-lg px-4 divide-y" style={{ borderColor: "var(--line)" }}>
                 {group.items.map((item, index) => {
                   const visual = activityVisual(item.type);
                   const sign = item.amount < 0 ? "- " : "";
@@ -272,7 +272,7 @@ export default function ParentActivity() {
                       style={{ ["--i" as string]: Math.min(gi * 3 + index, 8) }}
                     >
                       <span
-                        className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-md flex-shrink-0"
                         style={{ backgroundColor: visual.bg }}
                       >
                         {visual.icon}

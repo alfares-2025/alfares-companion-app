@@ -27,12 +27,12 @@ export function PullToRefreshIndicator({
     >
       <div className="mt-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e0e2e6] bg-white">
         {isRefreshing ? (
-          <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#1b61c9" }} />
+          <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#0f766e" }} />
         ) : (
           <ChevronDown
             className="h-4 w-4"
             style={{
-              color: pullProgress >= 1 ? "#1b61c9" : "#6B7280",
+              color: pullProgress >= 1 ? "#0f766e" : "#6B7280",
               transform: `rotate(${pullProgress * 180}deg)`,
               transition: "transform 0.12s linear, color 0.12s linear",
             }}

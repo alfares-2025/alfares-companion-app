@@ -46,9 +46,9 @@ export function ToastNotification({ title, message, duration = 4000, onDismiss }
           {/* Icon */}
           <div
             className="inline-flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0"
-            style={{ backgroundColor: "#e8f0fc" }}
+            style={{ backgroundColor: "#e1f1ee" }}
           >
-            <Bell className="w-5 h-5" style={{ color: "#1b61c9" }} />
+            <Bell className="w-5 h-5" style={{ color: "#0f766e" }} />
           </div>
 
           {/* Content */}

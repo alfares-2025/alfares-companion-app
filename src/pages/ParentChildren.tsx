@@ -215,7 +215,7 @@ export default function ParentChildren() {
                 <img
                   src={schoolLogo}
                   alt=""
-                  className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0"
+                  className="w-9 h-9 rounded-md object-contain bg-white p-0.5 flex-shrink-0"
                 />
               )}
               {schoolName && (
@@ -228,7 +228,7 @@ export default function ParentChildren() {
               <div className="relative">
                 <button
                   onClick={() => navigate({ to: "/parent-dashboard/activity" })}
-                  className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl"
+                  className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-md"
                   aria-label={
                     unreadPayments > 0
                       ? `النشاط المالي — ${unreadPayments} دفعات جديدة`
@@ -249,7 +249,7 @@ export default function ParentChildren() {
               <button
                 onClick={handleLogout}
                 aria-label="تسجيل خروج"
-                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl"
+                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-md"
               >
                 <LogOut className="w-[18px] h-[18px]" />
               </button>
@@ -265,7 +265,7 @@ export default function ParentChildren() {
               )}
               {greeting.text}
             </p>
-            <h1 className="mt-1 text-[28px] font-extrabold leading-tight">
+            <h1 className="mt-1 text-[24px] font-extrabold leading-tight">
               أهلاً، {firstName(guardianName)}
             </h1>
           </div>
@@ -324,7 +324,7 @@ export default function ParentChildren() {
         {flashMessage && (
           <div
             role="alert"
-            className="rounded-2xl p-3.5 flex items-start justify-between gap-3"
+            className="rounded-lg p-3.5 flex items-start justify-between gap-3"
             style={{ backgroundColor: "var(--bad-soft)" }}
           >
             <p className="text-sm font-medium" style={{ color: "var(--bad)" }}>
@@ -342,9 +342,9 @@ export default function ParentChildren() {
         )}
 
         {error && (
-          <div className="bg-white rounded-2xl px-6 py-8 text-center">
+          <div className="bg-white rounded-lg px-6 py-8 text-center">
             <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--bad-soft)" }}
             >
               <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
@@ -356,9 +356,9 @@ export default function ParentChildren() {
         )}
 
         {!error && children.length === 0 && (
-          <div className="bg-white rounded-2xl px-6 py-10 text-center">
+          <div className="bg-white rounded-lg px-6 py-10 text-center">
             <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-md mb-3"
               style={{ backgroundColor: "var(--paper)" }}
             >
               <Users className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
@@ -371,11 +371,11 @@ export default function ParentChildren() {
 
         {!error && children.length > 0 && (
           <section>
-            <h2 className="flex items-center gap-2 px-1 mb-2.5 text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+            <h2 className="flex items-center gap-2 px-1 mb-2.5 text-[14px] font-bold" style={{ color: "var(--ink)" }}>
               <Users className="w-4 h-4" strokeWidth={2.2} style={{ color: "var(--brand)" }} />
               الأبناء
             </h2>
-            <div className="bg-white rounded-2xl divide-y" style={{ borderColor: "var(--line)" }}>
+            <div className="bg-white rounded-lg divide-y" style={{ borderColor: "var(--line)" }}>
               {children.map((child, i) => {
                 const entry = commitment?.byStudent?.[i];
                 const miniStars =
@@ -434,7 +434,7 @@ export default function ParentChildren() {
               <button
                 type="button"
                 onClick={() => goToFinance(children[0].id)}
-                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-12 text-[15px] font-bold text-white transition active:scale-[0.99]"
+                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-md h-12 text-[14px] font-bold text-white transition active:scale-[0.99]"
                 style={{ backgroundColor: "var(--brand)" }}
               >
                 عرض التفاصيل المالية
@@ -448,10 +448,10 @@ export default function ParentChildren() {
           <button
             type="button"
             onClick={() => navigate({ to: "/parent-dashboard/activity" })}
-            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-right transition active:opacity-90"
+            className="w-full flex items-center gap-3 rounded-lg px-4 py-3.5 text-right transition active:opacity-90"
             style={{ backgroundColor: "var(--brand-soft)" }}
           >
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 bg-white">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0 bg-white">
               <Activity className="w-[18px] h-[18px]" style={{ color: "var(--brand)" }} />
             </span>
             <span className="flex-1 min-w-0 text-[14px] font-semibold" style={{ color: "var(--brand-deep)" }}>
