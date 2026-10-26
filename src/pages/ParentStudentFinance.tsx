@@ -265,11 +265,18 @@ export default function ParentStudentFinance() {
     feeItems,
     payments,
     academicPeriodId,
-    installments = [],
+    installments: rawInstallments = [],
     summary,
     cashSales = [],
   } = finance;
 
+  // Installments always read oldest due date first (undated ones last).
+  const installments = [...rawInstallments].sort((a, b) => {
+    if (!a.dueDate && !b.dueDate) return 0;
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+  });
   const dueSales = cashSales.filter((r) => r.countsAsDue);
   const replacementTotal = cashSales
     .filter((r) => !r.countsAsDue)
