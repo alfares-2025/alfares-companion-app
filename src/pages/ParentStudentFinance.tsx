@@ -121,7 +121,6 @@ export default function ParentStudentFinance() {
     null,
   );
   const [studentName, setStudentName] = useState<string | null>(null);
-  const [schoolName, setSchoolName] = useState<string | null>(null);
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +154,6 @@ export default function ParentStudentFinance() {
         ]);
 
         setFinance(financeData);
-        setSchoolName(childrenData.schoolName);
         setSchoolLogo(logo.schoolLogo);
         const match = childrenData.students.find(
           (c) => String(c.id) === String(studentId),
@@ -338,11 +336,6 @@ export default function ParentStudentFinance() {
                   alt=""
                   className="w-8 h-8 rounded-md object-contain bg-white p-0.5 flex-shrink-0"
                 />
-              )}
-              {schoolName && (
-                <p className="text-[13px] font-semibold text-[color:var(--hero-ink)] leading-snug line-clamp-2 max-w-[8rem]">
-                  {schoolName}
-                </p>
               )}
               <button
                 onClick={() => navigate({ to: "/parent-dashboard/activity" })}
