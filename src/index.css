@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,8 +6,103 @@
 
 :root {
   font-family: "Cairo", system-ui, -apple-system, sans-serif;
+  --paper: #f3f6fb;
+  --card: #ffffff;
+  --ink: #0f1b2d;
+  --ink-2: #4a5668;
+  --ink-3: #6b778a;
+  --line: #e2e8f0;
+  --brand: #1b61c9;
+  --brand-deep: #0e3c85;
+  --brand-soft: #e8f0fc;
+  --ok: #237a3b;
+  --ok-soft: #e6f4ea;
+  --warn: #a8610a;
+  --warn-soft: #fdf1dc;
+  --bad: #b42318;
+  --bad-soft: #fdecea;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Browser surfaces themed from the palette */
+::selection {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+input {
+  caret-color: var(--brand);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c3cddb transparent;
+}
+
+/* Deep-blue hero surface with a fine diagonal weave */
+.hero-surface {
+  background-color: var(--brand-deep);
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.045) 0 1px,
+      transparent 1px 14px
+    ),
+    linear-gradient(180deg, #0e3c85 0%, #134a9e 100%);
+}
+
+.chip-glass {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transition: background 0.2s var(--ease-out);
+}
+.chip-glass:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* One authored moment: content rises in once, staggered */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.5s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.bar-fill {
+  transition: width 0.9s var(--ease-out) 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+  .bar-fill {
+    transition: none;
+  }
 }

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
+import { formatCurrency, firstName, computeGreeting } from "@/lib/format";
 
 /**
  * Parent Portal — children list (multi-child guardians land here after
@@ -37,26 +38,6 @@ import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
  * greeting, school-branding header, semantic tints, rounded section cards) —
  * nothing in that file is exported, so the patterns are replicated here.
  */
-
-/** Time-of-day greeting, same buckets as PartnerDashboard.tsx. */
-function computeGreeting(): { text: string; isNight: boolean } {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return { text: "صباح الخير", isNight: false };
-  if (hour >= 12 && hour < 18) return { text: "مساء الخير", isNight: false };
-  return { text: "مساء الخير", isNight: true };
-}
-
-/** First token of the guardian's name for the "أهلاً، …" heading. */
-function firstName(name: string): string {
-  const trimmed = (name ?? "").trim();
-  if (!trimmed) return "ولي الأمر";
-  return trimmed.split(/\s+/)[0];
-}
-
-/** Local copy of PartnerDashboard.tsx's currency formatter (not exported there). */
-function formatCurrency(value: number): string {
-  return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
-}
 
 /**
  * Grammatically-correct Arabic for "for N child(ren)". Arabic number agreement
@@ -194,70 +175,72 @@ export default function ParentChildren() {
       <div
         dir="rtl"
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#F8FAFC" }}
+        style={{ backgroundColor: "var(--paper)" }}
       >
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1b61c9" }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
       </div>
     );
   }
+
+  const due = financeSummary?.totalDue ?? 0;
+  const paid = financeSummary?.totalPaid ?? 0;
+  const remaining = financeSummary?.balance ?? due - paid;
+  const ratio = due > 0 ? Math.min(1, Math.max(0, paid / due)) : 0;
+  const goToFinance = (id: string) =>
+    navigate({
+      to: "/parent-dashboard/children/$studentId/finance",
+      params: { studentId: id },
+    });
 
   return (
     <div
       dir="rtl"
       className="min-h-screen"
-      style={{ backgroundColor: "#F8FAFC" }}
+      style={{ backgroundColor: "var(--paper)" }}
       onTouchStart={handlePullTouchStart}
       onTouchMove={handlePullTouchMove}
       onTouchEnd={handlePullTouchEnd}
     >
-      {/* Pull-to-refresh indicator (touch only) */}
       <PullToRefreshIndicator
         pullDistance={pullDistance}
         isRefreshing={isRefreshing}
         pullProgress={pullProgress}
       />
-      <header className="px-4 pt-6 pb-4">
+
+      <header className="hero-surface text-white px-4 pt-5 pb-8">
         <div className="max-w-2xl mx-auto">
-          {/* Row 1: greeting (right) + new-payment bell + logout chip (left) */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span
-                className="text-sm font-medium"
-                style={{ color: "#6B7280" }}
-              >
-                {greeting.text}
-              </span>
-              {greeting.isNight ? (
-                <Moon className="w-4 h-4" style={{ color: "#6B7280" }} />
-              ) : (
-                <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {schoolLogo && (
+                <img
+                  src={schoolLogo}
+                  alt=""
+                  className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 flex-shrink-0"
+                />
+              )}
+              {schoolName && (
+                <p className="text-[14px] font-semibold text-white/90 truncate">
+                  {schoolName}
+                </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {/* Bell → the detailed recent-activity feed (Batch 10). The
-                  badge still shows the Batch 8 new-payment count (the most
-                  salient event type), fetched on mount before mark-seen
-                  clears it; the activity page keeps its own separate
-                  "seen" cursor. */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <div className="relative">
                 <button
-                  onClick={() =>
-                    navigate({ to: "/parent-dashboard/activity" })
-                  }
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-                  style={{ backgroundColor: "#e8f0fc" }}
+                  onClick={() => navigate({ to: "/parent-dashboard/activity" })}
+                  className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl"
                   aria-label={
                     unreadPayments > 0
                       ? `النشاط المالي — ${unreadPayments} دفعات جديدة`
                       : "النشاط المالي"
                   }
                 >
-                  <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                  <Bell className="w-[18px] h-[18px]" />
                 </button>
                 {unreadPayments > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold text-white border-2 border-white pointer-events-none"
-                    style={{ backgroundColor: "#1b61c9" }}
+                    className="absolute -top-1 -left-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold pointer-events-none"
+                    style={{ backgroundColor: "#fff", color: "var(--brand-deep)" }}
                   >
                     {unreadPayments > 99 ? "99+" : unreadPayments}
                   </span>
@@ -266,30 +249,32 @@ export default function ParentChildren() {
               <button
                 onClick={handleLogout}
                 aria-label="تسجيل خروج"
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-                style={{ backgroundColor: "#e8f0fc" }}
+                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl"
               >
-                <LogOut className="w-4 h-4" style={{ color: "#1b61c9" }} />
+                <LogOut className="w-[18px] h-[18px]" />
               </button>
             </div>
           </div>
 
-          {/* Greeting heading — directly below the top row, aligned to match the
-              time-of-day greeting above it (right, in RTL). */}
-          <h1
-            className="text-[22px] font-medium text-right"
-            style={{ color: "#181d26" }}
-          >
-            أهلاً، {firstName(guardianName)}
-          </h1>
+          <div className="rise" style={{ ["--i" as string]: 0 }}>
+            <p className="flex items-center gap-1.5 text-[13px] text-white/75">
+              {greeting.isNight ? (
+                <Moon className="w-3.5 h-3.5" />
+              ) : (
+                <Sun className="w-3.5 h-3.5" />
+              )}
+              {greeting.text}
+            </p>
+            <h1 className="mt-1 text-[28px] font-extrabold leading-tight">
+              أهلاً، {firstName(guardianName)}
+            </h1>
+          </div>
 
-          {/* Aggregate commitment stars across ALL the guardian's children —
-              same round(committed / total * 5) formula and gold/muted Star
-              treatment as StudentsView.tsx's per-student rating. Hidden
-              entirely when no child has an installment plan yet (total 0),
-              so an absence of data never reads as poor commitment. */}
           {commitment && commitment.totalInstallments > 0 && (
-            <div className="mt-1.5">
+            <div
+              className="rise mt-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5"
+              style={{ ["--i" as string]: 1 }}
+            >
               <div
                 className="flex items-center gap-0.5"
                 role="img"
@@ -298,273 +283,99 @@ export default function ParentChildren() {
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Star
                     key={i}
-                    size={14}
+                    size={13}
                     strokeWidth={1.5}
-                    className={
-                      i < commitment.starRating
-                        ? "text-[#F59E0B]"
-                        : "text-[#181d26]/15"
-                    }
+                    className={i < commitment.starRating ? "text-[#FBBF24]" : "text-white/30"}
                     fill={i < commitment.starRating ? "currentColor" : "none"}
                   />
                 ))}
               </div>
-              <p className="text-[11px] mt-1" style={{ color: "#6B7280" }}>
+              <span className="text-[12px] text-white/85">
                 {children.length === 1 ? "التزام بالمواعيد" : "التزام إجمالي"}:{" "}
-                {commitment.committedInstallments} من{" "}
-                {commitment.totalInstallments} أقساط
+                {commitment.committedInstallments} من {commitment.totalInstallments} أقساط
+              </span>
+            </div>
+          )}
+
+          {!error && children.length > 0 && financeSummary && (
+            <div className="rise mt-6" style={{ ["--i" as string]: 2 }}>
+              <p className="text-[13px] text-white/75">
+                المتبقي {formatChildrenCount(financeSummary.studentCount)}
               </p>
-            </div>
-          )}
-
-          {/* School card — logo + name on a light card bar (both optional) */}
-          {(schoolLogo || schoolName) && (
-            <div
-              className="flex items-center justify-center gap-3 mt-3 mb-3 bg-white rounded-[14px] border px-4 py-3"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              {schoolLogo && (
-                <img
-                  src={schoolLogo}
-                  alt=""
-                  className="w-10 h-10 rounded-lg object-contain bg-white flex-shrink-0"
+              <p className="mt-0.5 text-[40px] font-extrabold leading-none tracking-tight">
+                {formatCurrency(Math.max(0, remaining))}
+              </p>
+              <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-white"
+                  style={{ width: `${Math.round(ratio * 100)}%` }}
                 />
-              )}
-              {schoolName && (
-                <p
-                  className="text-[15px] font-bold text-center"
-                  style={{ color: "#181d26" }}
-                >
-                  {schoolName}
-                </p>
-              )}
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[12px] text-white/80">
+                <span>إجمالي المدفوع {formatCurrency(paid)}</span>
+                <span>إجمالي الرسوم {formatCurrency(due)}</span>
+              </div>
             </div>
           )}
-
-          {/* Subtitle */}
-          <p
-            className="text-[13px] text-center mt-1"
-            style={{ color: "#6B7280" }}
-          >
-            تابع الوضع المالي لأبنائك أولاً بأول.
-          </p>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pb-6 space-y-3">
+      <main className="max-w-2xl mx-auto px-4 pt-5 pb-6 space-y-4">
         {flashMessage && (
           <div
-            className="rounded-[14px] border p-3 flex items-start justify-between gap-3"
-            style={{ backgroundColor: "#FCEBEB", borderColor: "#F0CFCF" }}
+            role="alert"
+            className="rounded-2xl p-3.5 flex items-start justify-between gap-3"
+            style={{ backgroundColor: "var(--bad-soft)" }}
           >
-            <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--bad)" }}>
               {flashMessage}
             </p>
             <button
               onClick={() => setFlashMessage(null)}
-              className="flex-shrink-0 transition hover:opacity-70"
-              style={{ color: "#A32D2D" }}
+              aria-label="إغلاق"
+              className="flex-shrink-0"
+              style={{ color: "var(--bad)" }}
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Summary hero — aggregate paid-vs-due across all the guardian's
-            children as an SVG donut (paid % of total due), shown before any
-            single child is opened. Card conventions match the rest of this
-            file (bg-white, rounded, #e0e2e6 border). */}
-        {!error && children.length > 0 && financeSummary && (() => {
-          const ratio =
-            financeSummary.totalDue > 0
-              ? Math.min(
-                  1,
-                  Math.max(0, financeSummary.totalPaid / financeSummary.totalDue),
-                )
-              : 0;
-          const pct = Math.round(ratio * 100);
-          const RADIUS = 36;
-          const CIRC = 2 * Math.PI * RADIUS;
-          return (
-            <div
-              className="bg-white rounded-[16px] border p-5 flex items-center gap-5"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              <div
-                className="relative flex-shrink-0"
-                style={{ width: 88, height: 88 }}
-              >
-                <svg width="88" height="88" viewBox="0 0 88 88">
-                  <circle
-                    cx="44"
-                    cy="44"
-                    r={RADIUS}
-                    fill="none"
-                    stroke="#e0e2e6"
-                    strokeWidth="10"
-                  />
-                  <circle
-                    cx="44"
-                    cy="44"
-                    r={RADIUS}
-                    fill="none"
-                    stroke="#1b61c9"
-                    strokeWidth="10"
-                    strokeLinecap="round"
-                    strokeDasharray={CIRC}
-                    strokeDashoffset={CIRC * (1 - ratio)}
-                    transform="rotate(-90 44 44)"
-                  />
-                </svg>
-                <span
-                  className="absolute inset-0 flex items-center justify-center text-[16px] font-bold"
-                  style={{ color: "#1b61c9" }}
-                >
-                  {pct}%
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p
-                  className="text-[11px] font-medium mb-1"
-                  style={{ color: "#4B5563" }}
-                >
-                  إجمالي المدفوع {formatChildrenCount(financeSummary.studentCount)}
-                </p>
-                <p
-                  className="text-[18px] font-bold leading-tight break-words mb-2"
-                  style={{ color: "#1b61c9" }}
-                >
-                  {formatCurrency(financeSummary.totalPaid)}
-                </p>
-                <p
-                  className="text-[11px] font-medium mb-1"
-                  style={{ color: "#4B5563" }}
-                >
-                  إجمالي الرسوم
-                </p>
-                <p
-                  className="text-[15px] font-bold leading-tight break-words"
-                  style={{ color: "#181d26" }}
-                >
-                  {formatCurrency(financeSummary.totalDue)}
-                </p>
-              </div>
-            </div>
-          );
-        })()}
-
         {error && (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-8 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
+          <div className="bg-white rounded-2xl px-6 py-8 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#FCEBEB" }}
+              style={{ backgroundColor: "var(--bad-soft)" }}
             >
-              <AlertCircle className="w-6 h-6" style={{ color: "#A32D2D" }} />
+              <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
             </div>
-            <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--bad)" }}>
               {error}
             </p>
           </div>
         )}
 
         {!error && children.length === 0 && (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-10 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
+          <div className="bg-white rounded-2xl px-6 py-10 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#F8FAFC" }}
+              style={{ backgroundColor: "var(--paper)" }}
             >
-              <Users className="w-6 h-6" style={{ color: "#94a3b8" }} />
+              <Users className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
             </div>
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p className="text-sm" style={{ color: "var(--ink-3)" }}>
               لا يوجد أبناء مسجّلون
             </p>
           </div>
         )}
 
-        {/* Single-child guardian — one larger featured card (avatar + name +
-            grade) with a full-width finance button below it. No per-row
-            mini-rating here: the aggregate stars under the greeting already
-            cover this one child. */}
-        {!error && children.length === 1 && (
-          <>
-            <div className="flex items-center gap-2 px-1">
-              <Users
-                className="w-4 h-4"
-                strokeWidth={2.2}
-                style={{ color: "#1b61c9" }}
-              />
-              <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                الأبناء
-              </h2>
-            </div>
-            <div
-              className="bg-white rounded-[14px] border p-5"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <span
-                  className="inline-flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0 text-base font-bold"
-                  style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-                >
-                  {children[0].name.trim().charAt(0) || "؟"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="font-semibold truncate"
-                    style={{ color: "#181d26" }}
-                  >
-                    {children[0].name}
-                  </p>
-                  {children[0].grade && (
-                    <p
-                      className="text-[13px] mt-0.5"
-                      style={{ color: "#6B7280" }}
-                    >
-                      {children[0].grade}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate({
-                    to: "/parent-dashboard/children/$studentId/finance",
-                    params: { studentId: children[0].id },
-                  })
-                }
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-[12px] py-3 text-sm font-bold text-white transition hover:opacity-90 active:opacity-90"
-                style={{ backgroundColor: "#1b61c9" }}
-              >
-                عرض التفاصيل المالية
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Multi-child guardian — compact row list. Row order: avatar,
-            name+grade (the tap target), a compact 3-star mini-rating scaled
-            from this child's own starRating, then the chevron cue. */}
-        {!error && children.length > 1 && (
-          <>
-            <div className="flex items-center gap-2 px-1">
-              <Users
-                className="w-4 h-4"
-                strokeWidth={2.2}
-                style={{ color: "#1b61c9" }}
-              />
-              <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                الأبناء
-              </h2>
-            </div>
-            <div className="space-y-2">
+        {!error && children.length > 0 && (
+          <section>
+            <h2 className="flex items-center gap-2 px-1 mb-2.5 text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+              <Users className="w-4 h-4" strokeWidth={2.2} style={{ color: "var(--brand)" }} />
+              الأبناء
+            </h2>
+            <div className="bg-white rounded-2xl divide-y" style={{ borderColor: "var(--line)" }}>
               {children.map((child, i) => {
                 const entry = commitment?.byStudent?.[i];
                 const miniStars =
@@ -572,112 +383,91 @@ export default function ParentChildren() {
                     ? Math.round((entry.starRating / 5) * 3)
                     : null;
                 return (
-                  <div
+                  <button
                     key={child.id}
-                    className="w-full bg-white rounded-[14px] border p-4 flex items-center gap-3 text-right transition hover:border-slate-300"
-                    style={{ borderColor: "#e0e2e6" }}
+                    type="button"
+                    onClick={() => goToFinance(child.id)}
+                    aria-label={`تفاصيل ${child.name}`}
+                    className="rise w-full flex items-center gap-3 px-4 py-3.5 text-right transition active:bg-slate-50 first:rounded-t-2xl last:rounded-b-2xl"
+                    style={{ ["--i" as string]: i + 3, borderColor: "var(--line)" }}
                   >
                     <span
-                      className="inline-flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 text-sm font-bold"
-                      style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
+                      className="inline-flex items-center justify-center w-11 h-11 rounded-full flex-shrink-0 text-base font-bold"
+                      style={{ backgroundColor: "var(--brand-soft)", color: "var(--brand)" }}
                     >
                       {child.name.trim().charAt(0) || "؟"}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate({
-                          to: "/parent-dashboard/children/$studentId/finance",
-                          params: { studentId: child.id },
-                        })
-                      }
-                      aria-label={`تفاصيل ${child.name}`}
-                      className="min-w-0 flex-1 text-right cursor-pointer"
-                    >
-                      <span className="block truncate font-semibold transition-colors text-[#1b61c9] hover:text-[#1553a3] active:text-[#1553a3]">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-[15px]" style={{ color: "var(--ink)" }}>
                         {child.name}
                       </span>
                       {child.grade && (
-                        <span
-                          className="block text-[13px] mt-0.5"
-                          style={{ color: "#6B7280" }}
-                        >
+                        <span className="block text-[13px] mt-0.5" style={{ color: "var(--ink-3)" }}>
                           {child.grade}
                         </span>
                       )}
-                    </button>
-                    {miniStars !== null && (
-                      <div
+                    </span>
+                    {miniStars !== null && children.length > 1 && (
+                      <span
                         className="flex items-center gap-0.5 flex-shrink-0"
                         role="img"
                         aria-label={`الالتزام ${miniStars} من 3`}
                       >
-                        {[0, 1, 2].map((s) => (
+                        {[0, 1, 2].map((st) => (
                           <Star
-                            key={s}
+                            key={st}
                             size={12}
                             strokeWidth={1.5}
-                            className={
-                              s < miniStars
-                                ? "text-[#F5B301]"
-                                : "text-[#D1D5DB]"
-                            }
-                            fill={s < miniStars ? "currentColor" : "none"}
+                            className={st < miniStars ? "text-[#F5B301]" : "text-[#D1D5DB]"}
+                            fill={st < miniStars ? "currentColor" : "none"}
                           />
                         ))}
-                      </div>
+                      </span>
                     )}
-                    <ChevronLeft
-                      className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "#1b61c9" }}
-                    />
-                  </div>
+                    <ChevronLeft className="w-4 h-4 flex-shrink-0" style={{ color: "var(--ink-3)" }} />
+                  </button>
                 );
               })}
             </div>
-          </>
+
+            {children.length === 1 && (
+              <button
+                type="button"
+                onClick={() => goToFinance(children[0].id)}
+                className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-12 text-[15px] font-bold text-white transition active:scale-[0.99]"
+                style={{ backgroundColor: "var(--brand)" }}
+              >
+                عرض التفاصيل المالية
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            )}
+          </section>
         )}
 
-        {/* Bottom activity nudge — static prompt filling the space below the
-            list, tapping through to the full recent-activity feed (same target
-            as the header bell). Deliberately no data fetch here. */}
         {!error && children.length > 0 && (
           <button
             type="button"
             onClick={() => navigate({ to: "/parent-dashboard/activity" })}
-            className="w-full flex items-center gap-3 rounded-[14px] p-3.5 text-right transition hover:opacity-90 active:opacity-90"
-            style={{ backgroundColor: "#e8f0fc" }}
+            className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 text-right transition active:opacity-90"
+            style={{ backgroundColor: "var(--brand-soft)" }}
           >
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 bg-white">
-              <Activity className="w-4 h-4" style={{ color: "#1b61c9" }} />
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 bg-white">
+              <Activity className="w-[18px] h-[18px]" style={{ color: "var(--brand)" }} />
             </span>
-            <span
-              className="flex-1 min-w-0 text-[13px] font-medium"
-              style={{ color: "#1b61c9" }}
-            >
+            <span className="flex-1 min-w-0 text-[14px] font-semibold" style={{ color: "var(--brand-deep)" }}>
               تحقق من آخر النشاطات المالية
             </span>
-            <ChevronLeft
-              className="w-4 h-4 flex-shrink-0"
-              style={{ color: "#1b61c9" }}
-            />
+            <ChevronLeft className="w-4 h-4 flex-shrink-0" style={{ color: "var(--brand)" }} />
           </button>
         )}
       </main>
 
-      {/* Footer - Copyright */}
       <footer className="px-4 py-8">
         <div className="max-w-2xl mx-auto text-center space-y-1">
-          <p
-            className="text-[11px]"
-            style={{ color: "#6B7280" }}
-          >
+          <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>
             جميع الحقوق محفوظة © {new Date().getFullYear()} شركة nun
           </p>
-          <p
-            className="text-[12px] font-bold"
-            style={{ color: "#6B7280" }}
-          >
+          <p className="text-[12px] font-bold" style={{ color: "var(--ink-3)" }}>
             AL-FARES Private Schools
           </p>
         </div>

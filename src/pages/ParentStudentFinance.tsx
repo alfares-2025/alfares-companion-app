@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { ReactNode } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   getStudentFinance,
@@ -13,79 +12,17 @@ import {
   AlertCircle,
   ChevronRight,
   Wallet,
-  CircleDollarSign,
-  Receipt,
-  History,
-  Calendar,
-  Sun,
-  Moon,
-  Star,
+  Banknote,
+  FileCheck2,
+  CreditCard,
+  Landmark,
   Bell,
+  Star,
+  Check,
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
-
-// Local copies of PartnerDashboard.tsx's formatting helpers — that file
-// doesn't export them, so they're replicated here rather than imported.
-function formatCurrency(value: number): string {
-  return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
-}
-
-function SummaryRow({
-  label,
-  value,
-  color = "#181d26",
-  bold = false,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-  bold?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <span style={{ color: "#4B5563" }}>{label}</span>
-      <span className={bold ? "font-bold" : "font-semibold"} style={{ color }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  try {
-    const raw = String(value).trim();
-    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) {
-      const [, year, month, day] = match;
-      return `${day}/${month}/${year}`;
-    }
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  } catch {
-    return value;
-  }
-}
-
-/** Time-of-day greeting, same buckets as PartnerDashboard.tsx. */
-function computeGreeting(): { text: string; isNight: boolean } {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return { text: "صباح الخير", isNight: false };
-  if (hour >= 12 && hour < 18) return { text: "مساء الخير", isNight: false };
-  return { text: "مساء الخير", isNight: true };
-}
-
-/** First token of the guardian's name for the "أهلاً، …" heading. */
-function firstName(name: string): string {
-  const trimmed = (name ?? "").trim();
-  if (!trimmed) return "ولي الأمر";
-  return trimmed.split(/\s+/)[0];
-}
+import { formatCurrency, formatDate } from "@/lib/format";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: "نقدي",
@@ -95,101 +32,81 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: "بطاقة",
 };
 
+const PAYMENT_METHOD_ICONS = {
+  cash: Banknote,
+  check: FileCheck2,
+  cheque: FileCheck2,
+  transfer: Landmark,
+  card: CreditCard,
+} as const;
+
 const INSTALLMENT_STATUS_CONFIG: Record<
   string,
-  { label: string; bg: string; text: string; border: string }
+  { label: string; bg: string; text: string }
 > = {
-  paid: {
-    label: "مدفوع",
-    bg: "#ECF3E4",
-    text: "#4F7A1F",
-    border: "#D0E0BD",
-  },
-  partial: {
-    label: "جزئي",
-    bg: "#FAEEDA",
-    text: "#BA7517",
-    border: "#F5D9B0",
-  },
-  overdue: {
-    label: "متأخر",
-    bg: "#FCEBEB",
-    text: "#A32D2D",
-    border: "#F0CFCF",
-  },
-  unpaid: {
-    label: "غير مدفوع",
-    bg: "#F8FAFC",
-    text: "#6B7280",
-    border: "#e0e2e6",
-  },
+  paid: { label: "مدفوع", bg: "var(--ok-soft)", text: "var(--ok)" },
+  partial: { label: "جزئي", bg: "var(--warn-soft)", text: "var(--warn)" },
+  overdue: { label: "متأخر", bg: "var(--bad-soft)", text: "var(--bad)" },
+  unpaid: { label: "غير مدفوع", bg: "var(--paper)", text: "var(--ink-3)" },
 };
 
 function getInstallmentStatus(status: string | null | undefined): {
   label: string;
   bg: string;
   text: string;
-  border: string;
 } {
   const normalized = (status ?? "").toLowerCase().trim();
   return (
     INSTALLMENT_STATUS_CONFIG[normalized] ?? {
       label: status || "غير مدفوع",
-      bg: "#F8FAFC",
-      text: "#6B7280",
-      border: "#e0e2e6",
+      bg: "var(--paper)",
+      text: "var(--ink-3)",
     }
   );
 }
 
-/** MetricCard — copy-adapted from PartnerDashboard.tsx (lines ~144-177). */
-function MetricCard({
-  icon,
+const SALE_KINDS: Array<[string, string]> = [
+  ["uniform", "الزي"],
+  ["book", "الكتب"],
+  ["scout", "الكشافة"],
+];
+
+type TabKey = "summary" | "installments" | "payments";
+
+/** One line of the statement: label on the right, amount on the left. */
+function StatementRow({
   label,
   value,
-  valueColor,
-  iconBg,
+  color = "var(--ink)",
+  strong = false,
 }: {
-  icon: ReactNode;
   label: string;
   value: string;
-  valueColor?: string;
-  iconBg: string;
+  color?: string;
+  strong?: boolean;
 }) {
   return (
-    <div
-      className="bg-white rounded-2xl border p-4 flex flex-col gap-3 transition hover:shadow-md"
-      style={{ borderColor: "#e0e2e6" }}
-    >
-      <div className="flex items-center gap-2">
-        <div
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: iconBg }}
-        >
-          {icon}
-        </div>
-        <span className="text-[13px] font-medium" style={{ color: "#6B7280" }}>
-          {label}
-        </span>
-      </div>
-      <p
-        className="text-[18px] font-bold leading-tight break-words"
-        style={{ color: valueColor ?? "#181d26" }}
+    <div className="flex items-baseline justify-between gap-3 py-3">
+      <span
+        className="text-[14px]"
+        style={{ color: strong ? "var(--ink)" : "var(--ink-2)", fontWeight: strong ? 700 : 400 }}
+      >
+        {label}
+      </span>
+      <span
+        className={strong ? "text-[16px] font-extrabold" : "text-[14px] font-semibold"}
+        style={{ color }}
       >
         {value}
-      </p>
+      </span>
     </div>
   );
 }
 
 /**
  * Parent Portal — one student's read-only finance summary
- * (GET /api/parent-portal/students/:studentId/finance, Batch 3).
- *
- * Visual language copy-adapted from PartnerDashboard.tsx: the branded/greeting
- * header, the hero collection-ring (lines ~626-689), MetricCard stat cells
- * and grouped section cards. Behaviour (routing, fetching, 401/403 handling)
- * is unchanged.
+ * (GET /api/parent-portal/students/:studentId/finance). Behaviour (routing,
+ * fetching, 401/403 handling, pull-to-refresh) is unchanged.
  */
 export default function ParentStudentFinance() {
   const navigate = useNavigate();
@@ -204,31 +121,22 @@ export default function ParentStudentFinance() {
     null,
   );
   const [studentName, setStudentName] = useState<string | null>(null);
-  const [guardianName, setGuardianName] = useState("");
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"installments" | "payments">(
-    "installments",
-  );
+  const [activeTab, setActiveTab] = useState<TabKey>("summary");
+  const [barReady, setBarReady] = useState(false);
 
-  const [greeting, setGreeting] = useState(computeGreeting);
-  
   // Shared in-flight guard so pull-to-refresh never fires overlapping fetches.
   const isFetchingRef = useRef(false);
-
-  useEffect(() => {
-    const id = setInterval(() => setGreeting(computeGreeting()), 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const fetchFinanceData = useCallback(
     async ({ background = false }: { background?: boolean } = {}) => {
       // Skip if a fetch (pull-to-refresh) is already running.
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
-      
+
       if (!studentId) {
         navigate({ to: "/parent-dashboard/children" });
         isFetchingRef.current = false;
@@ -237,9 +145,9 @@ export default function ParentStudentFinance() {
 
       try {
         // Fetched together: the finance data itself; the guardian's full child
-        // list (for this student's own name and the header greeting
-        // name/school); and the school logo (best-effort — its own heavier
-        // endpoint, must never break the page).
+        // list (for this student's own name and the school name); and the
+        // school logo (best-effort — its own heavier endpoint, must never
+        // break the page).
         const [financeData, childrenData, logo] = await Promise.all([
           getStudentFinance(studentId),
           getParentChildren(),
@@ -247,7 +155,6 @@ export default function ParentStudentFinance() {
         ]);
 
         setFinance(financeData);
-        setGuardianName(childrenData.guardianName);
         setSchoolName(childrenData.schoolName);
         setSchoolLogo(logo.schoolLogo);
         const match = childrenData.students.find(
@@ -297,6 +204,13 @@ export default function ParentStudentFinance() {
     fetchFinanceData();
   }, [fetchFinanceData]);
 
+  // The progress bar grows once from empty after the data first arrives.
+  useEffect(() => {
+    if (!finance) return;
+    const id = requestAnimationFrame(() => setBarReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [finance]);
+
   // Pull-to-refresh
   const {
     pullDistance,
@@ -316,9 +230,9 @@ export default function ParentStudentFinance() {
       <div
         dir="rtl"
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#F8FAFC" }}
+        style={{ backgroundColor: "var(--paper)" }}
       >
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1b61c9" }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
       </div>
     );
   }
@@ -329,19 +243,16 @@ export default function ParentStudentFinance() {
       <div
         dir="rtl"
         className="min-h-screen flex items-center justify-center px-4"
-        style={{ backgroundColor: "#F8FAFC" }}
+        style={{ backgroundColor: "var(--paper)" }}
       >
-        <div
-          className="bg-white rounded-[18px] border px-6 py-8 text-center max-w-sm w-full"
-          style={{ borderColor: "#e0e2e6" }}
-        >
+        <div className="bg-white rounded-2xl px-6 py-8 text-center max-w-sm w-full">
           <div
             className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-            style={{ backgroundColor: "#FCEBEB" }}
+            style={{ backgroundColor: "var(--bad-soft)" }}
           >
-            <AlertCircle className="w-6 h-6" style={{ color: "#A32D2D" }} />
+            <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
           </div>
-          <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
+          <p className="text-sm font-medium" style={{ color: "var(--bad)" }}>
             {error}
           </p>
         </div>
@@ -361,12 +272,6 @@ export default function ParentStudentFinance() {
     cashSales = [],
   } = finance;
 
-  // Account-summary rows, in the order of the staff screen.
-  const SALE_KINDS: Array<[string, string]> = [
-    ["uniform", "الزي"],
-    ["book", "الكتب"],
-    ["scout", "الكشافة"],
-  ];
   const dueSales = cashSales.filter((r) => r.countsAsDue);
   const replacementTotal = cashSales
     .filter((r) => !r.countsAsDue)
@@ -374,22 +279,37 @@ export default function ParentStudentFinance() {
   const discountsTotal = summary ? summary.discountTotal + summary.exemptionTotal : 0;
   const netFees = summary ? summary.totalCharges - summary.cashSalesDue : 0;
 
-  // Paid-vs-due ratio for the hero ring. No `collection_rate` on the parent
-  // finance payload, so derive it; clamp for the overpaid / zero-due cases.
-  const paidPct =
+  const paidRatio =
     account && account.totalDue > 0
-      ? Math.min(
-          100,
-          Math.max(0, Math.round((account.totalPaid / account.totalDue) * 100)),
-        )
+      ? Math.min(1, Math.max(0, account.totalPaid / account.totalDue))
       : 0;
-  const RING_C = 2 * Math.PI * 36;
+  const settled = !!account && account.balance <= 0;
+
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: "summary", label: "ملخص الحساب" },
+    { key: "installments", label: "الأقساط" },
+    { key: "payments", label: "سجل الدفعات" },
+  ];
+
+  const emptyState = (text: string) => (
+    <div className="bg-white rounded-2xl px-6 py-10 text-center">
+      <div
+        className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
+        style={{ backgroundColor: "var(--paper)" }}
+      >
+        <Wallet className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
+      </div>
+      <p className="text-sm" style={{ color: "var(--ink-3)" }}>
+        {text}
+      </p>
+    </div>
+  );
 
   return (
     <div
       dir="rtl"
       className="min-h-screen"
-      style={{ backgroundColor: "#F8FAFC" }}
+      style={{ backgroundColor: "var(--paper)" }}
       onTouchStart={handlePullTouchStart}
       onTouchMove={handlePullTouchMove}
       onTouchEnd={handlePullTouchEnd}
@@ -400,578 +320,361 @@ export default function ParentStudentFinance() {
         isRefreshing={isRefreshing}
         pullProgress={pullProgress}
       />
-      <header className="px-4 pt-6 pb-4">
+
+      <header className="hero-surface text-white px-4 pt-5 pb-7">
         <div className="max-w-2xl mx-auto">
-          {/* Row 1: greeting (right) + back / logout (left) */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span
-                className="text-sm font-medium"
-                style={{ color: "#6B7280" }}
-              >
-                {greeting.text}
-              </span>
-              {greeting.isNight ? (
-                <Moon className="w-4 h-4" style={{ color: "#6B7280" }} />
-              ) : (
-                <Sun className="w-4 h-4" style={{ color: "#6B7280" }} />
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate({ to: "/parent-dashboard/children" })}
+              className="chip-glass inline-flex items-center gap-1 rounded-xl h-9 pr-2 pl-3.5 text-[14px] font-semibold"
+            >
+              <ChevronRight className="w-[18px] h-[18px]" />
+              رجوع
+            </button>
+            <div className="flex items-center gap-2.5 min-w-0">
+              {schoolLogo && (
+                <img
+                  src={schoolLogo}
+                  alt=""
+                  className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 flex-shrink-0"
+                />
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Bell → the detailed recent-activity feed (Batch 10). Same chip
-                  as ParentChildren.tsx's header. No badge count — that would
-                  need an extra fetch this page doesn't make. */}
+              {schoolName && (
+                <p className="hidden min-[380px]:block text-[13px] font-semibold text-white/85 truncate max-w-[150px]">
+                  {schoolName}
+                </p>
+              )}
               <button
                 onClick={() => navigate({ to: "/parent-dashboard/activity" })}
                 aria-label="النشاط المالي"
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition hover:opacity-80"
-                style={{ backgroundColor: "#e8f0fc" }}
+                className="chip-glass inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
               >
-                <Bell className="w-4 h-4" style={{ color: "#1b61c9" }} />
-              </button>
-              {/* Every guardian now always has the children list to return to
-                  (no single-child skip anymore), so this is unconditionally a
-                  back button — never a logout-instead-of-back. */}
-              <button
-                onClick={() =>
-                  navigate({ to: "/parent-dashboard/children" })
-                }
-                className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
-                style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-              >
-                <ChevronRight className="w-4 h-4" />
-                رجوع
+                <Bell className="w-[18px] h-[18px]" />
               </button>
             </div>
           </div>
 
-          {/* Student name — directly below the top row, same alignment as the
-              time-of-day greeting (right, in RTL). */}
-          {studentName && (
-            <h1
-              className="text-[22px] font-medium text-right"
-              style={{ color: "#1b61c9" }}
-            >
-              {studentName}
-            </h1>
+          <div className="rise" style={{ ["--i" as string]: 0 }}>
+            {studentName && (
+              <h1 className="text-[26px] font-extrabold leading-tight">
+                {studentName}
+              </h1>
+            )}
+            {account?.className && (
+              <span className="inline-block mt-2 rounded-full bg-white/10 px-3 py-1 text-[12px] font-semibold text-white/90">
+                {account.className}
+              </span>
+            )}
+          </div>
+
+          {account && (
+            <div className="rise mt-6" style={{ ["--i" as string]: 1 }}>
+              <p className="text-[13px] text-white/75">
+                {account.balance < 0
+                  ? "رصيد دائن"
+                  : settled
+                    ? "لا يوجد مبلغ متبقٍّ"
+                    : "المتبقي على الحساب"}
+              </p>
+              <p className="mt-0.5 text-[44px] font-extrabold leading-none tracking-tight">
+                {formatCurrency(Math.abs(account.balance))}
+              </p>
+              <div className="mt-4 h-2 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className="bar-fill h-full rounded-full bg-white"
+                  style={{ width: barReady ? `${Math.round(paidRatio * 100)}%` : "0%" }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[12px] text-white/80">
+                <span>إجمالي المدفوع {formatCurrency(account.totalPaid)}</span>
+                <span>إجمالي المستحق {formatCurrency(account.totalDue)}</span>
+              </div>
+            </div>
           )}
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pb-6 space-y-4">
+      {account && academicPeriodId && (
+        <nav
+          className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur-sm"
+          style={{ borderColor: "var(--line)" }}
+          aria-label="أقسام الحساب"
+        >
+          <div className="max-w-2xl mx-auto px-4 flex">
+            {tabs.map((t) => {
+              const on = activeTab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTab(t.key)}
+                  aria-current={on ? "page" : undefined}
+                  className="relative flex-1 py-3.5 text-[14px] transition-colors"
+                  style={{
+                    color: on ? "var(--brand)" : "var(--ink-3)",
+                    fontWeight: on ? 700 : 500,
+                  }}
+                >
+                  {t.label}
+                  <span
+                    className="absolute bottom-0 inset-x-6 h-[3px] rounded-t-full transition-opacity"
+                    style={{ backgroundColor: "var(--brand)", opacity: on ? 1 : 0 }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
+      <main className="max-w-2xl mx-auto px-4 pt-4 pb-10 space-y-4">
         {!academicPeriodId ? (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-10 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
-            <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#F8FAFC" }}
-            >
-              <Wallet className="w-6 h-6" style={{ color: "#94a3b8" }} />
-            </div>
-            <p className="text-sm" style={{ color: "#6B7280" }}>
-              لا توجد فترة أكاديمية حالية
-            </p>
-          </div>
+          emptyState("لا توجد فترة أكاديمية حالية")
         ) : !account ? (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-10 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
-            <div
-              className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#F8FAFC" }}
-            >
-              <Wallet className="w-6 h-6" style={{ color: "#94a3b8" }} />
-            </div>
-            <p className="text-sm" style={{ color: "#6B7280" }}>
-              لا يوجد حساب رسوم بعد
-            </p>
-          </div>
+          emptyState("لا يوجد حساب رسوم بعد")
         ) : (
           <>
-            {/* Hero — paid-vs-due ring + total due. Direct adaptation of
-                PartnerDashboard.tsx's collection-rate ring (lines ~626-689). */}
-            <div
-              className="rounded-[20px] p-6"
-              style={{ backgroundColor: "#e8f0fc" }}
-            >
-              <div className="flex items-center gap-6">
-                <div className="relative w-[92px] h-[92px] flex-shrink-0">
-                  <svg
-                    width="92"
-                    height="92"
-                    viewBox="0 0 92 92"
-                    className="transform -rotate-90"
-                  >
-                    <defs>
-                      <linearGradient
-                        id="parentFinanceRing"
-                        x1="0%"
-                        y1="0%"
-                        x2="100%"
-                        y2="0%"
-                      >
-                        <stop offset="0%" stopColor="#639922" />
-                        <stop offset="100%" stopColor="#1b61c9" />
-                      </linearGradient>
-                    </defs>
-                    <circle
-                      cx="46"
-                      cy="46"
-                      r="36"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.5)"
-                      strokeWidth="10"
-                    />
-                    <circle
-                      cx="46"
-                      cy="46"
-                      r="36"
-                      fill="none"
-                      stroke="url(#parentFinanceRing)"
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                      strokeDasharray={`${(paidPct / 100) * RING_C} ${RING_C}`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span
-                      className="text-xl font-bold"
-                      style={{ color: "#0C447C" }}
-                    >
-                      {paidPct}%
-                    </span>
+            {/* ───────── Account summary ───────── */}
+            {activeTab === "summary" && (
+              <div key="summary" className="space-y-4">
+                {summary ? (
+                  <div className="rise bg-white rounded-2xl px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 0 }}>
+                    <StatementRow label="إجمالي الرسوم الحالية" value={formatCurrency(netFees + discountsTotal)} />
+                    {discountsTotal > 0 && (
+                      <StatementRow
+                        label="إجمالي الخصومات والإعفاءات"
+                        value={`- ${formatCurrency(discountsTotal)}`}
+                        color="var(--ok)"
+                      />
+                    )}
+                    <StatementRow label="صافي الرسوم الحالية" value={formatCurrency(netFees)} />
+                    {summary.previousBalance > 0 && (
+                      <StatementRow label="أرصدة سابقة" value={formatCurrency(summary.previousBalance)} />
+                    )}
                   </div>
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <p className="text-xs mb-1" style={{ color: "#6B7280" }}>
-                      إجمالي المستحق
-                    </p>
-                    <p
-                      className="text-2xl font-bold"
-                      style={{ color: "#0C447C" }}
-                    >
-                      {formatCurrency(account.totalDue)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+                ) : null}
 
-            {/* Paid / remaining — MetricCard treatment, semantic tints kept
-                (accent for paid, amber for remaining). */}
-            <div className="grid grid-cols-2 gap-3">
-              <MetricCard
-                iconBg="#e8f0fc"
-                icon={
-                  <Wallet className="w-4 h-4" style={{ color: "#1b61c9" }} />
-                }
-                label="إجمالي المدفوع"
-                value={formatCurrency(account.totalPaid)}
-                valueColor="#1b61c9"
-              />
-              <MetricCard
-                iconBg="#FAEEDA"
-                icon={
-                  <CircleDollarSign
-                    className="w-4 h-4"
-                    style={{ color: "#BA7517" }}
-                  />
-                }
-                label="المتبقي"
-                value={formatCurrency(account.balance)}
-                valueColor={account.balance > 0 ? "#BA7517" : "#181d26"}
-              />
-            </div>
-
-            {account.className && (
-              <div
-                className="rounded-[14px] border p-3 flex items-center justify-between gap-2"
-                style={{ backgroundColor: "#F8FAFC", borderColor: "#e0e2e6" }}
-              >
-                <span
-                  className="text-[12px] font-semibold"
-                  style={{ color: "#4B5563" }}
-                >
-                  الصف
-                </span>
-                <span
-                  className="text-[14px] font-bold"
-                  style={{ color: "#181d26" }}
-                >
-                  {account.className}
-                </span>
-              </div>
-            )}
-
-            {/* Account summary — mirrors the staff "ملخص الحساب" tab */}
-            {summary && (
-              <div
-                className="bg-white rounded-[18px] border p-5"
-                style={{ borderColor: "#e0e2e6" }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <CircleDollarSign
-                    className="w-4 h-4"
-                    strokeWidth={2.2}
-                    style={{ color: "#1b61c9" }}
-                  />
-                  <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                    ملخص الحساب
-                  </h2>
-                </div>
-                <div className="divide-y divide-slate-100 text-sm">
-                  <SummaryRow label="إجمالي الرسوم الحالية" value={formatCurrency(netFees + discountsTotal)} />
-                  {discountsTotal > 0 && (
-                    <SummaryRow
-                      label="إجمالي الخصومات والإعفاءات"
-                      value={`- ${formatCurrency(discountsTotal)}`}
-                      color="#4F7A1F"
-                    />
-                  )}
-                  <SummaryRow label="صافي الرسوم الحالية" value={formatCurrency(netFees)} />
-                  {summary.previousBalance > 0 && (
-                    <SummaryRow label="أرصدة سابقة" value={formatCurrency(summary.previousBalance)} />
-                  )}
-                </div>
-
-                {cashSales.length > 0 && (
-                  <div
-                    className="my-3 rounded-xl border p-3"
-                    style={{ backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }}
-                  >
-                    <p className="text-[12px] font-bold mb-2" style={{ color: "#166534" }}>
+                {summary && dueSales.length > 0 && (
+                  <section className="rise bg-white rounded-2xl px-5 pt-4 pb-2" style={{ ["--i" as string]: 1 }}>
+                    <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
                       المشتريات من مبيعات الطلاب
-                    </p>
-                    {SALE_KINDS.map(([type, label]) => {
-                      const rows = dueSales.filter((r) => r.productType === type);
-                      if (rows.length === 0) return null;
-                      const sum = rows.reduce((a, r) => a + r.totalPrice, 0);
-                      return (
-                        <div key={type} className="mb-2 last:mb-0">
-                          <div
-                            className="flex justify-between text-[13px] font-bold"
-                            style={{ color: "#181d26" }}
-                          >
-                            <span>{label}</span>
-                            <span>{formatCurrency(sum)}</span>
-                          </div>
-                          {rows.map((r) => (
-                            <div
-                              key={r.id}
-                              className="flex justify-between text-[12px] mt-0.5"
-                              style={{ color: "#4B5563" }}
-                            >
-                              <span className="truncate">
+                    </h2>
+                    <div className="mt-1 divide-y" style={{ borderColor: "var(--line)" }}>
+                      {SALE_KINDS.map(([type, label]) => {
+                        const rows = dueSales.filter((r) => r.productType === type);
+                        if (rows.length === 0) return null;
+                        const sum = rows.reduce((a, r) => a + r.totalPrice, 0);
+                        return (
+                          <div key={type} className="py-3">
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
+                                {label}
+                              </span>
+                              <span className="text-[14px] font-bold" style={{ color: "var(--ink)" }}>
+                                {formatCurrency(sum)}
+                              </span>
+                            </div>
+                            {rows.map((r) => (
+                              <p
+                                key={r.id}
+                                className="mt-1 text-[12px] truncate"
+                                style={{ color: "var(--ink-3)" }}
+                              >
                                 {r.itemName ?? "—"}
                                 {r.quantity > 1 ? ` × ${r.quantity}` : ""} · {formatDate(r.createdAt)}
-                              </span>
-                              <span className="flex-shrink-0">{formatCurrency(r.totalPrice)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                     {replacementTotal > 0 && (
-                      <p className="mt-2 text-[11px]" style={{ color: "#4B5563" }}>
+                      <p className="pb-2 text-[12px]" style={{ color: "var(--ink-3)" }}>
                         بدل فاقد / تالف: {formatCurrency(replacementTotal)} (غير محسوب في المستحق)
                       </p>
                     )}
-                  </div>
+                  </section>
                 )}
 
-                <div className="divide-y divide-slate-100 text-sm">
-                  <SummaryRow label="إجمالي المستحق" value={formatCurrency(account.totalDue)} bold />
-                  {summary.cashPaid > 0 && (
-                    <SummaryRow label="المدفوع نقداً" value={formatCurrency(summary.cashPaid)} color="#1b61c9" />
+                <div className="rise bg-white rounded-2xl px-5 divide-y" style={{ borderColor: "var(--line)", ["--i" as string]: 2 }}>
+                  <StatementRow label="إجمالي المستحق" value={formatCurrency(account.totalDue)} strong />
+                  {summary && summary.cashPaid > 0 && (
+                    <StatementRow label="المدفوع نقداً" value={formatCurrency(summary.cashPaid)} color="var(--brand)" />
                   )}
-                  {summary.checkPaid > 0 && (
-                    <SummaryRow label="المدفوع بشيكات" value={formatCurrency(summary.checkPaid)} color="#1b61c9" />
+                  {summary && summary.checkPaid > 0 && (
+                    <StatementRow label="المدفوع بشيكات" value={formatCurrency(summary.checkPaid)} color="var(--brand)" />
                   )}
-                  {summary.creditsApplied > 0 && (
-                    <SummaryRow label="رسوم حجز المقعد" value={formatCurrency(summary.creditsApplied)} color="#1b61c9" />
+                  {summary && summary.creditsApplied > 0 && (
+                    <StatementRow label="رسوم حجز المقعد" value={formatCurrency(summary.creditsApplied)} color="var(--brand)" />
                   )}
-                  <SummaryRow
+                  <StatementRow
                     label={account.balance < 0 ? "رصيد دائن" : "الرصيد المتبقي"}
                     value={formatCurrency(Math.abs(account.balance))}
-                    color={account.balance < 0 ? "#1b61c9" : "#BA7517"}
-                    bold
+                    color={account.balance < 0 ? "var(--brand)" : settled ? "var(--ok)" : "var(--warn)"}
+                    strong
                   />
                 </div>
+
+                <section className="rise bg-white rounded-2xl px-5 pt-4 pb-2" style={{ ["--i" as string]: 3 }}>
+                  <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+                    بنود الرسوم
+                  </h2>
+                  {feeItems.length === 0 ? (
+                    <p className="text-sm text-center py-6" style={{ color: "var(--ink-3)" }}>
+                      لا توجد بنود رسوم
+                    </p>
+                  ) : (
+                    <div className="mt-1 divide-y" style={{ borderColor: "var(--line)" }}>
+                      {feeItems.map((item) => (
+                        <div key={item.id} className="flex items-baseline justify-between gap-3 py-3">
+                          <span className="text-[14px] truncate" style={{ color: "var(--ink-2)" }}>
+                            {item.itemName ?? item.itemType ?? "—"}
+                          </span>
+                          <span
+                            className="text-[14px] font-semibold flex-shrink-0"
+                            style={{ color: item.isDiscount ? "var(--ok)" : "var(--ink)" }}
+                          >
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
               </div>
             )}
 
-            {/* Fee items */}
-            <div
-              className="bg-white rounded-[18px] border p-5"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Receipt
-                  className="w-4 h-4"
-                  strokeWidth={2.2}
-                  style={{ color: "#1b61c9" }}
-                />
-                <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
-                  بنود الرسوم
-                </h2>
-              </div>
-              {feeItems.length === 0 ? (
-                <p
-                  className="text-sm text-center py-6"
-                  style={{ color: "#6B7280" }}
-                >
-                  لا توجد بنود رسوم
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {feeItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                    >
-                      <span
-                        className="text-sm font-medium truncate"
-                        style={{ color: "#181d26" }}
-                      >
-                        {item.itemName ?? item.itemType ?? "—"}
-                      </span>
-                      <span
-                        className="text-sm font-bold flex-shrink-0"
-                        style={{ color: item.isDiscount ? "#4F7A1F" : "#181d26" }}
-                      >
-                        {formatCurrency(item.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Installments & Payment History Tabs */}
-            <div
-              className="bg-white rounded-[18px] border p-5"
-              style={{ borderColor: "#e0e2e6" }}
-            >
-              {/* Tabs Switcher */}
-              <div
-                className="flex items-center p-1 rounded-xl mb-4"
-                style={{ backgroundColor: "#F1F5F9" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("installments")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                    activeTab === "installments"
-                      ? "bg-white shadow-sm"
-                      : "hover:text-[#181d26]"
-                  }`}
-                  style={{
-                    color:
-                      activeTab === "installments" ? "#1b61c9" : "#6B7280",
-                  }}
-                >
-                  <Calendar
-                    className="w-4 h-4"
-                    strokeWidth={2.2}
-                    style={{
-                      color:
-                        activeTab === "installments" ? "#1b61c9" : "#6B7280",
-                    }}
-                  />
-                  <span>الأقساط</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("payments")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                    activeTab === "payments"
-                      ? "bg-white shadow-sm"
-                      : "hover:text-[#181d26]"
-                  }`}
-                  style={{
-                    color: activeTab === "payments" ? "#1b61c9" : "#6B7280",
-                  }}
-                >
-                  <History
-                    className="w-4 h-4"
-                    strokeWidth={2.2}
-                    style={{
-                      color:
-                        activeTab === "payments" ? "#1b61c9" : "#6B7280",
-                    }}
-                  />
-                  <span>سجل الدفعات</span>
-                </button>
-              </div>
-
-              {/* Tab Content: Installments */}
-              {activeTab === "installments" && (
-                installments.length === 0 ? (
-                  <p
-                    className="text-sm text-center py-6"
-                    style={{ color: "#6B7280" }}
-                  >
-                    لا توجد أقساط مسجلة
-                  </p>
+            {/* ───────── Installments ───────── */}
+            {activeTab === "installments" && (
+              <div key="installments">
+                {installments.length === 0 ? (
+                  emptyState("لا توجد أقساط مسجلة")
                 ) : (
-                  <div className="space-y-3">
+                  <ol className="space-y-3">
                     {installments.map((inst, index) => {
-                      const statusConfig = getInstallmentStatus(inst.status);
-                      const instNumber =
-                        inst.installmentNo != null ? inst.installmentNo : index + 1;
+                      const st = getInstallmentStatus(inst.status);
+                      const num = inst.installmentNo != null ? inst.installmentNo : index + 1;
+                      const pct =
+                        inst.amountDue > 0
+                          ? Math.min(100, Math.round((inst.amountPaid / inst.amountDue) * 100))
+                          : 0;
+                      const isPaid = (inst.status ?? "").toLowerCase() === "paid";
                       return (
-                        <div
+                        <li
                           key={`${inst.installmentNo ?? index}-${index}`}
-                          className="rounded-[14px] border p-3.5 space-y-2.5"
-                          style={{
-                            backgroundColor: "#F8FAFC",
-                            borderColor: "#e0e2e6",
-                          }}
+                          className="rise bg-white rounded-2xl p-4"
+                          style={{ ["--i" as string]: index }}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="text-sm font-bold"
-                                style={{ color: "#181d26" }}
-                              >
-                                رقم القسط: {instNumber}
-                              </span>
-                              {inst.isCommitted && (
-                                <Star size={12} className="text-[#F59E0B]" fill="currentColor" />
-                              )}
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-full flex-shrink-0 text-[14px] font-bold"
+                              style={{ backgroundColor: st.bg, color: st.text }}
+                            >
+                              {isPaid ? <Check className="w-4 h-4" strokeWidth={3} /> : num}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="flex items-center gap-1.5 text-[14px] font-bold" style={{ color: "var(--ink)" }}>
+                                رقم القسط: {num}
+                                {inst.isCommitted && (
+                                  <Star size={12} className="text-[#F59E0B]" fill="currentColor" />
+                                )}
+                              </p>
+                              <p className="text-[12px] mt-0.5" style={{ color: "var(--ink-3)" }}>
+                                تاريخ الاستحقاق: {formatDate(inst.dueDate)}
+                              </p>
                             </div>
                             <span
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-                              style={{
-                                backgroundColor: statusConfig.bg,
-                                color: statusConfig.text,
-                                borderColor: statusConfig.border,
-                              }}
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold flex-shrink-0"
+                              style={{ backgroundColor: st.bg, color: st.text }}
                             >
-                              {statusConfig.label}
+                              {st.label}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-[12px]">
-                            <span style={{ color: "#6B7280" }}>تاريخ الاستحقاق</span>
-                            <span
-                              className="font-medium"
-                              style={{ color: "#181d26" }}
-                            >
-                              {formatDate(inst.dueDate)}
-                            </span>
+                          <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--line)" }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${pct}%`, backgroundColor: isPaid ? "var(--ok)" : "var(--brand)" }}
+                            />
                           </div>
 
-                          <div
-                            className="grid grid-cols-3 gap-2 pt-2 border-t text-right"
-                            style={{ borderColor: "#e0e2e6" }}
-                          >
+                          <div className="mt-2.5 grid grid-cols-3 text-right">
                             <div>
-                              <p
-                                className="text-[11px] mb-0.5"
-                                style={{ color: "#6B7280" }}
-                              >
-                                المبلغ المستحق
-                              </p>
-                              <p
-                                className="text-[13px] font-bold"
-                                style={{ color: "#181d26" }}
-                              >
+                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المبلغ المستحق</p>
+                              <p className="text-[14px] font-bold mt-0.5" style={{ color: "var(--ink)" }}>
                                 {formatCurrency(inst.amountDue)}
                               </p>
                             </div>
                             <div>
+                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المدفوع</p>
                               <p
-                                className="text-[11px] mb-0.5"
-                                style={{ color: "#6B7280" }}
-                              >
-                                المدفوع
-                              </p>
-                              <p
-                                className="text-[13px] font-bold"
-                                style={{
-                                  color:
-                                    inst.amountPaid > 0 ? "#4F7A1F" : "#181d26",
-                                }}
+                                className="text-[14px] font-bold mt-0.5"
+                                style={{ color: inst.amountPaid > 0 ? "var(--ok)" : "var(--ink)" }}
                               >
                                 {formatCurrency(inst.amountPaid)}
                               </p>
                             </div>
                             <div>
+                              <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>المتبقي</p>
                               <p
-                                className="text-[11px] mb-0.5"
-                                style={{ color: "#6B7280" }}
-                              >
-                                المتبقي
-                              </p>
-                              <p
-                                className="text-[13px] font-bold"
-                                style={{
-                                  color:
-                                    inst.balance > 0 ? "#BA7517" : "#181d26",
-                                }}
+                                className="text-[14px] font-bold mt-0.5"
+                                style={{ color: inst.balance > 0 ? "var(--warn)" : "var(--ink)" }}
                               >
                                 {formatCurrency(inst.balance)}
                               </p>
                             </div>
                           </div>
-                        </div>
+                        </li>
                       );
                     })}
-                  </div>
-                )
-              )}
+                  </ol>
+                )}
+              </div>
+            )}
 
-              {/* Tab Content: Payment history */}
-              {activeTab === "payments" && (
-                payments.length === 0 ? (
-                  <p
-                    className="text-sm text-center py-6"
-                    style={{ color: "#6B7280" }}
-                  >
-                    لا توجد دفعات بعد
-                  </p>
+            {/* ───────── Payment history ───────── */}
+            {activeTab === "payments" && (
+              <div key="payments">
+                {payments.length === 0 ? (
+                  emptyState("لا توجد دفعات بعد")
                 ) : (
-                  <div className="space-y-2">
-                    {payments.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0"
-                      >
-                        <div className="min-w-0">
-                          <p
-                            className="text-sm font-semibold"
-                            style={{ color: "#181d26" }}
-                          >
-                            {formatDate(p.paymentDate)}
-                          </p>
-                          {p.paymentMethod && (
-                            <p
-                              className="text-[12px] mt-0.5"
-                              style={{ color: "#6B7280" }}
-                            >
-                              {PAYMENT_METHOD_LABELS[
-                                p.paymentMethod.toLowerCase()
-                              ] ?? p.paymentMethod}
-                            </p>
-                          )}
-                        </div>
-                        <span
-                          className="text-sm font-bold flex-shrink-0"
-                          style={{ color: "#4F7A1F" }}
+                  <ul className="bg-white rounded-2xl px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+                    {payments.map((p, index) => {
+                      const method = p.paymentMethod?.toLowerCase() ?? "";
+                      const Icon =
+                        PAYMENT_METHOD_ICONS[method as keyof typeof PAYMENT_METHOD_ICONS] ?? Banknote;
+                      return (
+                        <li
+                          key={p.id}
+                          className="rise flex items-center gap-3 py-3.5"
+                          style={{ ["--i" as string]: Math.min(index, 8) }}
                         >
-                          {formatCurrency(p.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
+                          <span
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+                            style={{ backgroundColor: "var(--brand-soft)", color: "var(--brand)" }}
+                          >
+                            <Icon className="w-[18px] h-[18px]" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[14px] font-semibold" style={{ color: "var(--ink)" }}>
+                              {formatDate(p.paymentDate)}
+                            </p>
+                            {p.paymentMethod && (
+                              <p className="text-[12px] mt-0.5" style={{ color: "var(--ink-3)" }}>
+                                {PAYMENT_METHOD_LABELS[method] ?? p.paymentMethod}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[15px] font-bold flex-shrink-0" style={{ color: "var(--ok)" }}>
+                            {formatCurrency(p.amount)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
           </>
         )}
       </main>

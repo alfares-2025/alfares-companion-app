@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { parentLogin, getParentChildren, ApiError } from "@/lib/api";
-import { Loader2, LogIn } from "lucide-react";
+import { Loader2, GraduationCap, ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -57,85 +57,105 @@ export default function Login() {
     return (
       <div
         dir="rtl"
-        className="min-h-screen flex items-center justify-center bg-slate-100"
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: "var(--paper)" }}
       >
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
       </div>
     );
   }
 
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-8"
-    >
-      <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-lg px-8 py-10 border border-slate-200/60">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-600 mb-4">
-              <LogIn className="w-7 h-7 text-white" strokeWidth={2.2} />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">
-              تسجيل الدخول
-            </h1>
-            <p className="text-sm text-slate-500 mt-1.5">
-              مرحباً بك، يرجى إدخال رقم هوية ولي الأمر
-            </p>
-          </div>
+    <div dir="rtl" className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--paper)" }}>
+      {/* Brand band */}
+      <div className="hero-surface px-6 pt-14 pb-24 text-white">
+        <div className="max-w-sm mx-auto rise" style={{ ["--i" as string]: 0 }}>
+          <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 mb-5">
+            <GraduationCap className="w-6 h-6" strokeWidth={2} />
+          </span>
+          <h1 className="text-[28px] font-extrabold leading-tight">مدارس الفارس الخاصة</h1>
+          <p className="mt-2 text-[15px] text-white/80">
+            تابع الوضع المالي لأبنائك أولاً بأول.
+          </p>
+        </div>
+      </div>
 
-          {/* Parent form — national ID only (temporary), submits to
-              POST /api/parent-portal/login with no code; the backend
-              accepts that only while PARENT_LOGIN_ID_ONLY=true. */}
-          <form onSubmit={handleParentSubmit} className="space-y-5">
-              <div>
-                <label
-                  htmlFor="guardianNationalId"
-                  className="block text-sm font-semibold text-slate-700 mb-1.5"
-                >
-                  رقم الهوية
-                </label>
-                <input
-                  id="guardianNationalId"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={guardianNationalId}
-                  onChange={(e) => setGuardianNationalId(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-white"
-                  placeholder="أدخل رقم الهوية"
-                />
-              </div>
+      {/* Form sheet overlapping the band */}
+      <main className="flex-1 px-4 -mt-14">
+        <div
+          className="max-w-sm mx-auto rounded-3xl bg-white px-6 py-7 rise"
+          style={{
+            ["--i" as string]: 2,
+            boxShadow: "0 12px 32px -12px rgba(14, 60, 133, 0.28)",
+          }}
+        >
+          <h2 className="text-xl font-bold" style={{ color: "var(--ink)" }}>
+            تسجيل الدخول
+          </h2>
+          <p className="text-sm mt-1" style={{ color: "var(--ink-2)" }}>
+            مرحباً بك، يرجى إدخال رقم هوية ولي الأمر
+          </p>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          <form onSubmit={handleParentSubmit} className="mt-6 space-y-5">
+            <div>
+              <label
+                htmlFor="guardianNationalId"
+                className="block text-sm font-semibold mb-2"
+                style={{ color: "var(--ink)" }}
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  "تسجيل الدخول"
-                )}
-              </button>
+                رقم الهوية
+              </label>
+              <input
+                id="guardianNationalId"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={guardianNationalId}
+                onChange={(e) => setGuardianNationalId(e.target.value)}
+                required
+                className="w-full h-12 rounded-xl border px-4 text-base outline-none transition focus:ring-4"
+                style={{
+                  borderColor: "var(--line)",
+                  backgroundColor: "var(--paper)",
+                  color: "var(--ink)",
+                  letterSpacing: "0.04em",
+                }}
+                placeholder="أدخل رقم الهوية"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-xl text-white text-base font-bold transition active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "var(--brand)" }}
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  تسجيل الدخول
+                  <ArrowLeft className="w-4 h-4" />
+                </>
+              )}
+            </button>
           </form>
 
-          {/* Error */}
           {error && (
-            <div className="mt-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
-              <p className="text-sm text-red-600 font-medium text-center">
-                {error}
-              </p>
+            <div
+              role="alert"
+              className="mt-5 rounded-xl px-4 py-3 text-sm font-medium text-center"
+              style={{ backgroundColor: "var(--bad-soft)", color: "var(--bad)" }}
+            >
+              {error}
             </div>
           )}
         </div>
+      </main>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          نظام الفارس — جميع الحقوق محفوظة
-        </p>
-      </div>
+      <p className="text-center text-xs py-6" style={{ color: "var(--ink-3)" }}>
+        نظام الفارس — جميع الحقوق محفوظة
+      </p>
     </div>
   );
 }
