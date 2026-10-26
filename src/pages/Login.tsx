@@ -73,7 +73,7 @@ export default function Login() {
           <span className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/15 mb-5">
             <GraduationCap className="w-6 h-6" strokeWidth={2} />
           </span>
-          <h1 className="text-[28px] font-extrabold leading-tight">مدارس الفارس الخاصة</h1>
+          <h1 className="text-[28px] font-extrabold leading-tight">بوابة أولياء الأمور</h1>
           <p className="mt-2 text-[15px] text-white/80">
             تابع الوضع المالي لأبنائك أولاً بأول.
           </p>

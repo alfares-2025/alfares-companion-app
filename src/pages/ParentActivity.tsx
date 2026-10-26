@@ -21,21 +21,19 @@ import {
 } from "lucide-react";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { PullToRefreshIndicator } from "@/components/PullToRefreshIndicator";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 /**
- * Parent Portal — detailed recent-activity feed (Batch 10).
+ * Parent Portal — detailed recent-activity feed.
  *
  * GET /api/parent-portal/activity-feed returns a newest-first, server-capped
  * list of financial events across ALL of the guardian's children (new
  * payment / check returned / new fee / discount applied / payment cancelled),
- * each with its own timestamp. Reached from the bell in ParentChildren's
- * header.
- *
- * Visual language copy-adapted from ParentChildren.tsx / Notifications.tsx:
- * #F8FAFC ground, #1b61c9 accent, rounded white section cards, RTL.
+ * each with its own timestamp. Reached from the bell in the header of the
+ * children list. Events are grouped by day.
  */
 
-/** Relative Arabic time — same buckets as Notifications.tsx. */
+/** Relative Arabic time for the line under each event. */
 function formatRelativeTime(iso: string | null): string {
   if (!iso) return "—";
   const then = new Date(iso).getTime();
@@ -48,46 +46,63 @@ function formatRelativeTime(iso: string | null): string {
   if (minutes < 60) return `منذ ${minutes} دقيقة`;
   if (hours < 24) return `منذ ${hours} ساعة`;
   if (days < 30) return `منذ ${days} يوم`;
-  // Older than a month — show the calendar date instead.
-  const match = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) {
-    const [, year, month, day] = match;
-    return `${day}/${month}/${year}`;
-  }
-  return "—";
+  return formatDate(iso);
+}
+
+/** Day bucket label: اليوم / أمس / dd/mm/yyyy. */
+function dayLabel(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const startOf = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const dayDiff = Math.round((startOf(new Date()) - startOf(d)) / 86400000);
+  if (dayDiff <= 0) return "اليوم";
+  if (dayDiff === 1) return "أمس";
+  return formatDate(iso);
 }
 
 const ACTIVITY_ICON_CONFIG: Record<
   ParentActivityType,
-  { icon: ReactNode; bg: string }
+  { icon: ReactNode; bg: string; amountColor: string }
 > = {
   payment: {
-    icon: <CircleDollarSign className="w-4 h-4" style={{ color: "#4F7A1F" }} />,
-    bg: "#ECF3E4",
+    icon: <CircleDollarSign className="w-[18px] h-[18px]" style={{ color: "var(--ok)" }} />,
+    bg: "var(--ok-soft)",
+    amountColor: "var(--ok)",
   },
   fee_charged: {
-    icon: <Receipt className="w-4 h-4" style={{ color: "#1b61c9" }} />,
-    bg: "#e8f0fc",
+    icon: <Receipt className="w-[18px] h-[18px]" style={{ color: "var(--brand)" }} />,
+    bg: "var(--brand-soft)",
+    amountColor: "var(--ink)",
   },
   discount_applied: {
-    icon: <BadgePercent className="w-4 h-4" style={{ color: "#4F7A1F" }} />,
-    bg: "#ECF3E4",
+    icon: <BadgePercent className="w-[18px] h-[18px]" style={{ color: "var(--ok)" }} />,
+    bg: "var(--ok-soft)",
+    amountColor: "var(--ok)",
   },
   check_returned: {
-    icon: <Undo2 className="w-4 h-4" style={{ color: "#A32D2D" }} />,
-    bg: "#FCEBEB",
+    icon: <Undo2 className="w-[18px] h-[18px]" style={{ color: "var(--bad)" }} />,
+    bg: "var(--bad-soft)",
+    amountColor: "var(--bad)",
   },
   payment_cancelled: {
-    icon: <XCircle className="w-4 h-4" style={{ color: "#A32D2D" }} />,
-    bg: "#FCEBEB",
+    icon: <XCircle className="w-[18px] h-[18px]" style={{ color: "var(--bad)" }} />,
+    bg: "var(--bad-soft)",
+    amountColor: "var(--bad)",
   },
 };
 
-function activityVisual(type: ParentActivityType): { icon: ReactNode; bg: string } {
+function activityVisual(type: ParentActivityType): {
+  icon: ReactNode;
+  bg: string;
+  amountColor: string;
+} {
   return (
     ACTIVITY_ICON_CONFIG[type] ?? {
-      icon: <History className="w-4 h-4" style={{ color: "#6B7280" }} />,
-      bg: "#F8FAFC",
+      icon: <History className="w-[18px] h-[18px]" style={{ color: "var(--ink-3)" }} />,
+      bg: "var(--paper)",
+      amountColor: "var(--ink)",
     }
   );
 }
@@ -157,18 +172,27 @@ export default function ParentActivity() {
       <div
         dir="rtl"
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "#F8FAFC" }}
+        style={{ backgroundColor: "var(--paper)" }}
       >
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1b61c9" }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--brand)" }} />
       </div>
     );
+  }
+
+  // Newest-first list, grouped by consecutive day bucket.
+  const groups: Array<{ label: string; items: ParentActivity[] }> = [];
+  for (const item of activities) {
+    const label = dayLabel(item.timestamp);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(item);
+    else groups.push({ label, items: [item] });
   }
 
   return (
     <div
       dir="rtl"
       className="min-h-screen"
-      style={{ backgroundColor: "#F8FAFC" }}
+      style={{ backgroundColor: "var(--paper)" }}
       onTouchStart={handlePullTouchStart}
       onTouchMove={handlePullTouchMove}
       onTouchEnd={handlePullTouchEnd}
@@ -179,121 +203,109 @@ export default function ParentActivity() {
         pullProgress={pullProgress}
       />
 
-      <header className="px-4 pt-6 pb-4">
+      <header className="hero-surface text-white px-4 pt-5 pb-7">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4" style={{ color: "#1b61c9" }} />
-              <span
-                className="text-sm font-medium"
-                style={{ color: "#6B7280" }}
-              >
-                آخر التحديثات
-              </span>
-            </div>
-            <button
-              onClick={() => navigate({ to: "/parent-dashboard/children" })}
-              className="inline-flex items-center gap-1 rounded-lg h-8 px-2.5 text-[13px] font-medium transition hover:opacity-80"
-              style={{ backgroundColor: "#e8f0fc", color: "#1b61c9" }}
-            >
-              <ChevronRight className="w-4 h-4" />
-              رجوع
-            </button>
+          <button
+            onClick={() => navigate({ to: "/parent-dashboard/children" })}
+            className="chip-glass inline-flex items-center gap-1 rounded-xl h-9 pr-2 pl-3.5 text-[14px] font-semibold mb-6"
+          >
+            <ChevronRight className="w-[18px] h-[18px]" />
+            رجوع
+          </button>
+          <div className="rise" style={{ ["--i" as string]: 0 }}>
+            <h1 className="text-[28px] font-extrabold leading-tight">
+              النشاط المالي
+            </h1>
+            <p className="mt-1.5 text-[14px] text-white/80">
+              كل ما استجد على حسابات أبنائك المالية.
+            </p>
           </div>
-
-          <h1
-            className="text-[22px] font-medium text-center"
-            style={{ color: "#181d26" }}
-          >
-            النشاط المالي
-          </h1>
-          <p
-            className="text-[13px] text-center mt-1"
-            style={{ color: "#6B7280" }}
-          >
-            كل ما استجد على حسابات أبنائك المالية.
-          </p>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pb-6 space-y-3">
+      <main className="max-w-2xl mx-auto px-4 pt-5 pb-10 space-y-5">
         {error && (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-8 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
+          <div className="bg-white rounded-2xl px-6 py-8 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#FCEBEB" }}
+              style={{ backgroundColor: "var(--bad-soft)" }}
             >
-              <AlertCircle className="w-6 h-6" style={{ color: "#A32D2D" }} />
+              <AlertCircle className="w-6 h-6" style={{ color: "var(--bad)" }} />
             </div>
-            <p className="text-sm font-medium" style={{ color: "#A32D2D" }}>
+            <p className="text-sm font-medium" style={{ color: "var(--bad)" }}>
               {error}
             </p>
           </div>
         )}
 
         {!error && activities.length === 0 && (
-          <div
-            className="bg-white rounded-[18px] border px-6 py-10 text-center"
-            style={{ borderColor: "#e0e2e6" }}
-          >
+          <div className="bg-white rounded-2xl px-6 py-10 text-center">
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-              style={{ backgroundColor: "#F8FAFC" }}
+              style={{ backgroundColor: "var(--paper)" }}
             >
-              <History className="w-6 h-6" style={{ color: "#94a3b8" }} />
+              <History className="w-6 h-6" style={{ color: "var(--ink-3)" }} />
             </div>
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p className="text-sm" style={{ color: "var(--ink-3)" }}>
               لا يوجد نشاط حديث
             </p>
           </div>
         )}
 
-        {!error && activities.length > 0 && (
-          <div className="space-y-2">
-            {activities.map((item, index) => {
-              const visual = activityVisual(item.type);
-              return (
-                <div
-                  key={`${item.type}-${item.timestamp ?? ""}-${index}`}
-                  className="bg-white rounded-[14px] border p-4 flex items-start gap-3 text-right"
-                  style={{ borderColor: "#e0e2e6" }}
-                >
-                  <span
-                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0"
-                    style={{ backgroundColor: visual.bg }}
-                  >
-                    {visual.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="text-sm font-semibold leading-snug"
-                      style={{ color: "#181d26" }}
+        {!error &&
+          groups.map((group, gi) => (
+            <section key={`${group.label}-${gi}`}>
+              <h2
+                className="px-1 mb-2 text-[13px] font-bold"
+                style={{ color: "var(--ink-2)" }}
+              >
+                {group.label}
+              </h2>
+              <ul className="bg-white rounded-2xl px-4 divide-y" style={{ borderColor: "var(--line)" }}>
+                {group.items.map((item, index) => {
+                  const visual = activityVisual(item.type);
+                  const sign = item.amount < 0 ? "- " : "";
+                  return (
+                    <li
+                      key={`${item.type}-${item.timestamp ?? ""}-${index}`}
+                      className="rise flex items-start gap-3 py-3.5"
+                      style={{ ["--i" as string]: Math.min(gi * 3 + index, 8) }}
                     >
-                      {item.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
                       <span
-                        className="text-[12px] font-medium"
-                        style={{ color: "#1b61c9" }}
+                        className="inline-flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0"
+                        style={{ backgroundColor: visual.bg }}
                       >
-                        {item.studentName}
+                        {visual.icon}
                       </span>
-                      <span
-                        className="text-[11px]"
-                        style={{ color: "#6B7280" }}
-                      >
-                        · {formatRelativeTime(item.timestamp)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="text-[14px] font-semibold leading-snug"
+                          style={{ color: "var(--ink)" }}
+                        >
+                          {item.description}
+                        </p>
+                        <p className="mt-1 text-[12px]" style={{ color: "var(--ink-3)" }}>
+                          <span className="font-semibold" style={{ color: "var(--brand)" }}>
+                            {item.studentName}
+                          </span>{" "}
+                          · {formatRelativeTime(item.timestamp)}
+                        </p>
+                      </div>
+                      {item.amount !== 0 && (
+                        <span
+                          className="text-[14px] font-bold flex-shrink-0 pt-0.5"
+                          style={{ color: visual.amountColor }}
+                        >
+                          {sign}
+                          {formatCurrency(Math.abs(item.amount))}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
       </main>
     </div>
   );
