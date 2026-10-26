@@ -469,6 +469,38 @@ export interface ParentStudentFinance {
     status: string;
     isCommitted: boolean;
   }[];
+  // Same figures as the staff account-summary tab (opening balances and
+  // counter sales included). Optional so an older backend still renders.
+  summary?: ParentFinanceBreakdown | null;
+  cashSales?: ParentCashSale[];
+  seatReservation?: {
+    exists: boolean;
+    amount: number;
+    paymentDate: string | null;
+    transferred: boolean;
+  } | null;
+}
+
+export interface ParentFinanceBreakdown {
+  totalCharges: number;
+  previousBalance: number;
+  discountTotal: number;
+  exemptionTotal: number;
+  cashPaid: number;
+  checkPaid: number;
+  creditsApplied: number;
+  cashSalesDue: number;
+  remainingBalance: number;
+}
+
+export interface ParentCashSale {
+  id: string;
+  itemName: string | null;
+  productType: string | null;
+  quantity: number;
+  totalPrice: number;
+  createdAt: string | null;
+  countsAsDue: boolean;
 }
 
 // ---------------------------------------------------------------------------

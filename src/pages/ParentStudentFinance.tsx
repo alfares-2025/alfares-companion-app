@@ -31,6 +31,27 @@ function formatCurrency(value: number): string {
   return `${(value ?? 0).toLocaleString("en-US")} شيكل (₪)`;
 }
 
+function SummaryRow({
+  label,
+  value,
+  color = "#181d26",
+  bold = false,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  bold?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <span style={{ color: "#4B5563" }}>{label}</span>
+      <span className={bold ? "font-bold" : "font-semibold"} style={{ color }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function formatDate(value: string | null): string {
   if (!value) return "—";
   try {
@@ -336,7 +357,22 @@ export default function ParentStudentFinance() {
     payments,
     academicPeriodId,
     installments = [],
+    summary,
+    cashSales = [],
   } = finance;
+
+  // Account-summary rows, in the order of the staff screen.
+  const SALE_KINDS: Array<[string, string]> = [
+    ["uniform", "الزي"],
+    ["book", "الكتب"],
+    ["scout", "الكشافة"],
+  ];
+  const dueSales = cashSales.filter((r) => r.countsAsDue);
+  const replacementTotal = cashSales
+    .filter((r) => !r.countsAsDue)
+    .reduce((a, r) => a + r.totalPrice, 0);
+  const discountsTotal = summary ? summary.discountTotal + summary.exemptionTotal : 0;
+  const netFees = summary ? summary.totalCharges - summary.cashSalesDue : 0;
 
   // Paid-vs-due ratio for the hero ring. No `collection_rate` on the parent
   // finance payload, so derive it; clamp for the overpaid / zero-due cases.
@@ -568,6 +604,103 @@ export default function ParentStudentFinance() {
                 >
                   {account.className}
                 </span>
+              </div>
+            )}
+
+            {/* Account summary — mirrors the staff "ملخص الحساب" tab */}
+            {summary && (
+              <div
+                className="bg-white rounded-[18px] border p-5"
+                style={{ borderColor: "#e0e2e6" }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <CircleDollarSign
+                    className="w-4 h-4"
+                    strokeWidth={2.2}
+                    style={{ color: "#1b61c9" }}
+                  />
+                  <h2 className="text-sm font-bold" style={{ color: "#181d26" }}>
+                    ملخص الحساب
+                  </h2>
+                </div>
+                <div className="divide-y divide-slate-100 text-sm">
+                  <SummaryRow label="إجمالي الرسوم الحالية" value={formatCurrency(netFees + discountsTotal)} />
+                  {discountsTotal > 0 && (
+                    <SummaryRow
+                      label="إجمالي الخصومات والإعفاءات"
+                      value={`- ${formatCurrency(discountsTotal)}`}
+                      color="#4F7A1F"
+                    />
+                  )}
+                  <SummaryRow label="صافي الرسوم الحالية" value={formatCurrency(netFees)} />
+                  {summary.previousBalance > 0 && (
+                    <SummaryRow label="أرصدة سابقة" value={formatCurrency(summary.previousBalance)} />
+                  )}
+                </div>
+
+                {cashSales.length > 0 && (
+                  <div
+                    className="my-3 rounded-xl border p-3"
+                    style={{ backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }}
+                  >
+                    <p className="text-[12px] font-bold mb-2" style={{ color: "#166534" }}>
+                      المشتريات من مبيعات الطلاب
+                    </p>
+                    {SALE_KINDS.map(([type, label]) => {
+                      const rows = dueSales.filter((r) => r.productType === type);
+                      if (rows.length === 0) return null;
+                      const sum = rows.reduce((a, r) => a + r.totalPrice, 0);
+                      return (
+                        <div key={type} className="mb-2 last:mb-0">
+                          <div
+                            className="flex justify-between text-[13px] font-bold"
+                            style={{ color: "#181d26" }}
+                          >
+                            <span>{label}</span>
+                            <span>{formatCurrency(sum)}</span>
+                          </div>
+                          {rows.map((r) => (
+                            <div
+                              key={r.id}
+                              className="flex justify-between text-[12px] mt-0.5"
+                              style={{ color: "#4B5563" }}
+                            >
+                              <span className="truncate">
+                                {r.itemName ?? "—"}
+                                {r.quantity > 1 ? ` × ${r.quantity}` : ""} · {formatDate(r.createdAt)}
+                              </span>
+                              <span className="flex-shrink-0">{formatCurrency(r.totalPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    {replacementTotal > 0 && (
+                      <p className="mt-2 text-[11px]" style={{ color: "#4B5563" }}>
+                        بدل فاقد / تالف: {formatCurrency(replacementTotal)} (غير محسوب في المستحق)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="divide-y divide-slate-100 text-sm">
+                  <SummaryRow label="إجمالي المستحق" value={formatCurrency(account.totalDue)} bold />
+                  {summary.cashPaid > 0 && (
+                    <SummaryRow label="المدفوع نقداً" value={formatCurrency(summary.cashPaid)} color="#1b61c9" />
+                  )}
+                  {summary.checkPaid > 0 && (
+                    <SummaryRow label="المدفوع بشيكات" value={formatCurrency(summary.checkPaid)} color="#1b61c9" />
+                  )}
+                  {summary.creditsApplied > 0 && (
+                    <SummaryRow label="رسوم حجز المقعد" value={formatCurrency(summary.creditsApplied)} color="#1b61c9" />
+                  )}
+                  <SummaryRow
+                    label={account.balance < 0 ? "رصيد دائن" : "الرصيد المتبقي"}
+                    value={formatCurrency(Math.abs(account.balance))}
+                    color={account.balance < 0 ? "#1b61c9" : "#BA7517"}
+                    bold
+                  />
+                </div>
               </div>
             )}
 
