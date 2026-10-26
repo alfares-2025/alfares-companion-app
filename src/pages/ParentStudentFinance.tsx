@@ -273,6 +273,7 @@ export default function ParentStudentFinance() {
   const {
     account,
     payments,
+    feeItems,
     academicPeriodId,
     installments: rawInstallments = [],
     summary,
@@ -286,6 +287,12 @@ export default function ParentStudentFinance() {
     if (!b.dueDate) return -1;
     return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
   });
+  // Reasons behind the discounts/exemptions (cancelled or waived ones never count).
+  const discountItems = feeItems.filter(
+    (it) =>
+      (it.isDiscount || it.amount < 0) &&
+      !["cancelled", "canceled", "waived"].includes((it.status ?? "").toLowerCase()),
+  );
   const dueSales = cashSales.filter((r) => r.countsAsDue);
   const replacementTotal = cashSales
     .filter((r) => !r.countsAsDue)
@@ -455,6 +462,20 @@ export default function ParentStudentFinance() {
                         value={`- ${formatCurrency(discountsTotal)}`}
                         color="var(--ok)"
                       />
+                    )}
+                    {discountsTotal > 0 && discountItems.length > 0 && (
+                      <div className="py-2.5 space-y-1">
+                        {discountItems.map((it) => (
+                          <div
+                            key={it.id}
+                            className="flex items-baseline justify-between gap-3 text-[12px]"
+                            style={{ color: "var(--ink-3)" }}
+                          >
+                            <span className="truncate">{it.itemName ?? it.itemType ?? "—"}</span>
+                            <span className="flex-shrink-0">{formatCurrency(Math.abs(it.amount))}</span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                     <StatementRow label="صافي الرسوم الحالية" value={formatCurrency(netFees)} />
                     {summary.previousBalance > 0 && (
